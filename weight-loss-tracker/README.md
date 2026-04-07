@@ -154,17 +154,6 @@ openai:
 
 2. AI会自动分析用户录入的食物描述，并填充详细的营养信息
 
-## 开发建议
-
-### 对于Java初学者
-
-1. **先跑通基础功能**：专注于食物记录和热量统计
-2. **逐步添加复杂功能**：如分页查询、数据验证等
-3. **学习重点**：
-   - Spring Boot基本概念和注解使用
-   - MyBatis-Plus的CRUD操作
-   - RESTful API设计
-   - 异常处理和统一响应
 
 ### 扩展方向
 
@@ -173,13 +162,3 @@ openai:
 3. **数据分析**：添加图表展示和趋势分析
 4. **社交功能**：好友系统、排行榜等
 5. **更多AI功能**：个性化饮食建议、运动计划推荐
-
-## 学习资源
-
-- [Spring Boot官方文档](https://spring.io/projects/spring-boot)
-- [MyBatis-Plus文档](https://baomidou.com/)
-- [MySQL教程](https://www.mysql.com/)
-- [OpenAI API文档](https://platform.openai.com/docs)
-
----
-💡 **提示**：这个项目非常适合Java初学者练习，涵盖了Web开发的主要知识点！
