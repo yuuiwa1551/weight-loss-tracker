@@ -1,0 +1,174 @@
+# API 契约
+
+后端默认地址：`http://localhost:8080`
+
+统一响应格式：
+
+```json
+{
+  "success": true,
+  "message": "ok",
+  "data": {}
+}
+```
+
+错误响应也使用同一结构，HTTP 状态码表达错误类型。
+
+## Profile
+
+### 获取资料
+
+```http
+GET /api/profile
+```
+
+响应 `data`：
+
+```json
+{
+  "id": 1,
+  "nickname": "Demo User",
+  "heightCm": 175.0,
+  "currentWeightKg": 75.0,
+  "targetWeightKg": 68.0,
+  "dailyCalorieGoal": 1900,
+  "bmi": 24.5,
+  "weightToLoseKg": 7.0,
+  "createdAt": "2026-06-08T10:00:00",
+  "updatedAt": "2026-06-08T10:00:00"
+}
+```
+
+### 更新资料
+
+```http
+PUT /api/profile
+Content-Type: application/json
+```
+
+请求体：
+
+```json
+{
+  "nickname": "Demo User",
+  "heightCm": 175.0,
+  "currentWeightKg": 75.0,
+  "targetWeightKg": 68.0,
+  "dailyCalorieGoal": 1900
+}
+```
+
+## Food Records
+
+### 新增食物记录
+
+```http
+POST /api/food-records
+Content-Type: application/json
+```
+
+请求体：
+
+```json
+{
+  "recordDate": "2026-06-08",
+  "mealType": "LUNCH",
+  "foodName": "Chicken salad",
+  "calories": 460,
+  "protein": 38.0,
+  "fat": 18.0,
+  "carbohydrate": 28.0,
+  "note": "optional"
+}
+```
+
+`mealType` 可选值：`BREAKFAST`、`LUNCH`、`DINNER`、`SNACK`。
+
+### 查询某日食物记录
+
+```http
+GET /api/food-records?date=2026-06-08
+```
+
+不传 `date` 时默认查询今天。
+
+### 删除食物记录
+
+```http
+DELETE /api/food-records/{id}
+```
+
+## Exercise Records
+
+### 新增运动记录
+
+```http
+POST /api/exercise-records
+Content-Type: application/json
+```
+
+请求体：
+
+```json
+{
+  "recordDate": "2026-06-08",
+  "exerciseType": "Cardio",
+  "exerciseName": "Easy run",
+  "durationMinutes": 30,
+  "caloriesBurned": 280,
+  "note": "optional"
+}
+```
+
+### 查询某日运动记录
+
+```http
+GET /api/exercise-records?date=2026-06-08
+```
+
+不传 `date` 时默认查询今天。
+
+### 删除运动记录
+
+```http
+DELETE /api/exercise-records/{id}
+```
+
+## Summaries
+
+### 每日汇总
+
+```http
+GET /api/summaries/daily?date=2026-06-08
+```
+
+不传 `date` 时默认查询今天。
+
+响应 `data`：
+
+```json
+{
+  "date": "2026-06-08",
+  "totalCaloriesConsumed": 780,
+  "totalCaloriesBurned": 280,
+  "netCalories": 500,
+  "dailyCalorieGoal": 1900,
+  "calorieDifference": 1400,
+  "goalStatus": "UNDER",
+  "totalProtein": 50.0,
+  "totalFat": 25.0,
+  "totalCarbohydrate": 80.0,
+  "foodRecords": [],
+  "exerciseRecords": []
+}
+```
+
+`goalStatus` 可选值：`UNDER`、`MEET`、`OVER`。
+
+### 最近趋势
+
+```http
+GET /api/summaries/recent?days=7
+```
+
+`days` 范围是 `1` 到 `90`，默认 `7`。
