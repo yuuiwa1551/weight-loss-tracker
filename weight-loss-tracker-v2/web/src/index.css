@@ -1,0 +1,54 @@
+:root {
+  --surface: #eef2ef;
+  --panel: #fbfcf8;
+  --sidebar: #1f2b2e;
+  --sidebar-text: #f6f0e6;
+  --text: #223033;
+  --text-soft: #6d7771;
+  --muted: #aeb9b2;
+  --border: #d9dfd7;
+  --chip: #f1f4ed;
+  --accent: #b5465a;
+  --shadow: 0 14px 32px rgba(31, 43, 46, 0.08);
+  font-family: "IBM Plex Sans", "Aptos", "Noto Sans SC", sans-serif;
+  color: var(--text);
+  background: var(--surface);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  letter-spacing: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  min-width: 320px;
+  background: var(--surface);
+}
+
+body {
+  min-width: 320px;
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(31, 138, 112, 0.28);
+  outline-offset: 2px;
+}
+
+#root {
+  min-height: 100vh;
+}

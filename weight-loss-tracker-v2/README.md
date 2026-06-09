@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-Phase 1 后端已经完成：包含 Spring Boot 后端骨架、H2 数据库、基础数据模型、接口校验、统一响应、异常处理、种子数据和接口测试。
+Phase 2 已经完成：后端和前端都可以本地运行，前端通过真实 API 展示仪表盘、食物记录、运动记录和目标资料，不使用假数据兜底。
 
 - 产品规格：[docs/SPEC.md](docs/SPEC.md)
 - 开发计划：[docs/PLAN.md](docs/PLAN.md)
@@ -34,6 +34,31 @@ H2 控制台：`http://localhost:8080/h2-console`
 - JDBC URL：`jdbc:h2:file:./data/weight-loss-tracker-v2`
 - username：`sa`
 - password：空
+
+## 前端运行
+
+```powershell
+cd web
+npm install
+npm run lint
+npm run build
+npm run dev
+```
+
+前端默认运行在 `http://127.0.0.1:5173/`，开发模式下 `/api` 会代理到 `http://localhost:8080`。
+
+## 已验证
+
+```powershell
+cd backend
+.\mvnw.cmd test
+
+cd ..\web
+npm run lint
+npm run build
+```
+
+同时已完成浏览器联调：前端通过 Vite proxy 调用后端汇总接口，新增食物记录后仪表盘汇总会实时变化。
 
 ## MVP 目标
 

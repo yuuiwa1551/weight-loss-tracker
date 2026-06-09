@@ -57,11 +57,13 @@ weight-loss-tracker-v2/
 - `GET /api/summaries/daily` 可用
 - `GET /api/summaries/recent` 可用
 
-## 阶段 2：前端最小可运行版本
+## 阶段 2：前端可运行版本
+
+状态：已完成。
 
 目标：前端能调用后端真实接口，不使用假数据掩盖错误。
 
-任务：
+已完成任务：
 
 1. 创建 Vite React TypeScript 项目
 2. 建立 API client
@@ -72,6 +74,8 @@ weight-loss-tracker-v2/
    - Profile
 4. 接入真实后端接口
 5. 做基础加载、错误和空状态
+6. 增加 Vite `/api` 代理
+7. 完成 lint、build 和浏览器联调
 
 完成标准：
 
@@ -103,12 +107,12 @@ weight-loss-tracker-v2/
 
 ## 下一轮建议动作
 
-下一步建议进入阶段 2，创建 `web` 前端并按 [API.md](API.md) 对接真实接口。
+下一步建议进入阶段 3，把当前单文件前端整理成更容易维护的结构。
 
 具体顺序：
 
-1. 创建 Vite React TypeScript 项目
-2. 建立 API client 和类型
-3. 先做 Dashboard，对接 `GET /api/summaries/daily` 和 `GET /api/summaries/recent`
-4. 再做食物、运动、Profile 页面
-5. 每做完一个页面就跑一次构建和简单联调
+1. 拆分页面组件和通用组件
+2. 提取表单控件、统计卡片、记录列表和通知组件
+3. 增加轻量路由或保留单页状态路由并清理结构
+4. 统一 README 的端到端启动说明
+5. 做一轮前后端回归验证
