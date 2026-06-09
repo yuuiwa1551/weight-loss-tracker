@@ -14,6 +14,15 @@
 
 错误响应也使用同一结构，HTTP 状态码表达错误类型。
 
+当前接口模块：
+
+- Profile：单用户目标资料
+- Food Records：食物摄入记录
+- Exercise Records：运动消耗记录
+- Weight Records：体重趋势记录
+- Reports：7 天和 30 天周期报表
+- Summaries：每日汇总和最近趋势
+
 ## Profile
 
 ### 获取资料

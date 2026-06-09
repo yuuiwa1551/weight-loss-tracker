@@ -20,7 +20,7 @@ weight-loss-tracker-v2/
 当前采用技术栈：
 
 - backend：Spring Boot 4 + Java 17 target，已在 Java 21 环境验证
-- web：React + Vite + TypeScript
+- web：React + Vite + TypeScript + React Router
 - database：H2 文件数据库，用于 demo 快速启动，后续再切 MySQL
 
 如果你更想贴近真实部署，可以第一版直接用 MySQL，但开发成本会稍高。
@@ -107,7 +107,7 @@ weight-loss-tracker-v2/
 
 ## 阶段 4：后续扩展
 
-状态：进行中。
+状态：第一轮扩展已完成。
 
 可以考虑：
 
@@ -118,7 +118,7 @@ weight-loss-tracker-v2/
 5. 周/月报表
 6. 移动端适配增强
 
-当前已开始：
+已完成扩展：
 
 1. 增加体重记录后端接口
 2. 增加前端 `/weight` 体重趋势页面
@@ -127,10 +127,12 @@ weight-loss-tracker-v2/
 
 ## 下一轮建议动作
 
-下一步建议进入阶段 4，开始挑一个真正能提升 demo 价值的扩展点。
+下一步建议继续从 Phase 4 里挑更偏真实产品化的扩展点。
 
 具体顺序：
 
-1. 加体重记录和趋势图，让减重目标有长期数据
-2. 做周报/月报汇总，增强 demo 展示效果
-3. 再考虑 AI 食物营养估算或 MySQL 部署
+1. 增加体重趋势的折线图和更清晰的目标达成可视化
+2. 增加 AI 食物营养估算，让 demo 更有差异化
+3. 增加 MySQL 配置和部署说明，贴近真实运行环境
+4. 增加登录注册和多用户数据隔离
+5. 补充更完整的端到端测试

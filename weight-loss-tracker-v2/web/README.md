@@ -2,6 +2,8 @@
 
 React + Vite + TypeScript 前端，用于对接 V2 后端 API。
 
+当前前端使用 React Router 管理页面路由，所有业务数据都通过 `/api` 调用后端真实接口。
+
 ## 功能
 
 - 仪表盘：展示每日热量、营养汇总、目标状态和最近 7 天趋势
@@ -26,6 +28,7 @@ cd ..\backend
 ```powershell
 cd ..\web
 npm install
+npm run check
 npm run dev
 ```
 
