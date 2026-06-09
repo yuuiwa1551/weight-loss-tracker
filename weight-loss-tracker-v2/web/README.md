@@ -8,6 +8,7 @@ React + Vite + TypeScript 前端，用于对接 V2 后端 API。
 - 食物记录：新增、查看和删除当天食物记录
 - 运动记录：新增、查看和删除当天运动记录
 - 目标资料：查看和更新用户基础目标
+- 路由：`/`、`/food`、`/exercise`、`/profile`
 
 ## 本地运行
 
@@ -33,6 +34,7 @@ npm run dev
 ## 检查命令
 
 ```powershell
-npm run lint
-npm run build
+npm run check
 ```
+
+`check` 会依次执行 ESLint 和生产构建。

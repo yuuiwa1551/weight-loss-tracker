@@ -1,0 +1,237 @@
+import type { FormEvent, ReactNode } from 'react'
+import { NavLink } from 'react-router-dom'
+import type { MealType, UserProfile } from './api'
+import { mealLabels } from './constants'
+import { pages, type PageConfig } from './routes'
+import type { ExerciseFormState, FoodFormState, Notice, ProfileFormState, RecordListRow } from './types'
+
+interface AppShellProps {
+  activePage: PageConfig
+  profile: UserProfile | null
+  selectedDate: string
+  notice: Notice | null
+  onSelectedDateChange: (nextDate: string) => void
+  children: ReactNode
+}
+
+export function AppShell({ activePage, profile, selectedDate, notice, onSelectedDateChange, children }: AppShellProps) {
+  return (
+    <div className="shell">
+      <aside className="sidebar">
+        <div className="brand-block">
+          <div className="brand-mark">WT</div>
+          <div>
+            <p className="eyebrow">Weight Loss Tracker</p>
+            <h1>减肥追踪</h1>
+          </div>
+        </div>
+        <nav className="nav-list" aria-label="主导航">
+          {pages.map((item) => (
+            <NavLink
+              key={item.id}
+              to={item.path}
+              end={item.path === '/'}
+              className={({ isActive }) => `nav-button ${isActive ? 'active' : ''}`}
+            >
+              <span>{item.marker}</span>
+              {item.label}
+            </NavLink>
+          ))}
+        </nav>
+        <div className="profile-strip">
+          <span>目标</span>
+          <strong>{profile ? `${profile.dailyCalorieGoal} kcal` : '未加载'}</strong>
+        </div>
+      </aside>
+
+      <main className="workspace">
+        <header className="topbar">
+          <div>
+            <p className="eyebrow">{activePage.label}</p>
+            <h2>{activePage.heading}</h2>
+          </div>
+          <label className="date-control">
+            <span>日期</span>
+            <input type="date" value={selectedDate} onChange={(event) => onSelectedDateChange(event.target.value)} />
+          </label>
+        </header>
+
+        {notice && <NoticeBanner notice={notice} />}
+        {children}
+      </main>
+    </div>
+  )
+}
+
+export function NoticeBanner({ notice }: { notice: Notice }) {
+  return <div className={`notice ${notice.type}`}>{notice.message}</div>
+}
+
+export function MetricCard({
+  label,
+  value,
+  suffix,
+  tone,
+}: {
+  label: string
+  value?: number
+  suffix: string
+  tone: 'ink' | 'teal' | 'amber' | 'berry'
+}) {
+  return (
+    <section className={`metric-card ${tone}`}>
+      <span>{label}</span>
+      <strong>{value ?? '—'}</strong>
+      <small>{suffix}</small>
+    </section>
+  )
+}
+
+export function RecordListPanel({
+  title,
+  emptyText,
+  rows,
+  loading,
+  saving,
+}: {
+  title: string
+  emptyText: string
+  rows?: RecordListRow[]
+  loading: boolean
+  saving: boolean
+}) {
+  return (
+    <section className="panel list-panel">
+      <div className="panel-header">
+        <div>
+          <p className="eyebrow">Records</p>
+          <h3>{title}</h3>
+        </div>
+        <span className="count-pill">{rows?.length ?? 0}</span>
+      </div>
+      {loading ? (
+        <div className="empty-state">加载中</div>
+      ) : rows && rows.length > 0 ? (
+        <div className="record-list">
+          {rows.map((row) => (
+            <article className="record-row" key={row.id}>
+              <div>
+                <strong>{row.primary}</strong>
+                <span>{row.secondary}</span>
+              </div>
+              <b>{row.value}</b>
+              <button type="button" className="icon-button" onClick={row.onDelete} disabled={saving} aria-label="删除记录">
+                ×
+              </button>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="empty-state">{emptyText}</div>
+      )}
+    </section>
+  )
+}
+
+export function FoodRecordForm({
+  foodForm,
+  saving,
+  onSubmit,
+  onChange,
+}: {
+  foodForm: FoodFormState
+  saving: boolean
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onChange: (nextForm: FoodFormState) => void
+}) {
+  return (
+    <form className="panel form-panel" onSubmit={onSubmit}>
+      <div className="panel-header">
+        <div>
+          <p className="eyebrow">Food</p>
+          <h3>新增食物</h3>
+        </div>
+        <button className="primary-button" type="submit" disabled={saving}>＋ 保存</button>
+      </div>
+      <div className="form-grid">
+        <label>日期<input type="date" value={foodForm.recordDate} onChange={(event) => onChange({ ...foodForm, recordDate: event.target.value })} required /></label>
+        <label>餐次<select value={foodForm.mealType} onChange={(event) => onChange({ ...foodForm, mealType: event.target.value as MealType })}>{Object.entries(mealLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
+        <label className="wide">食物名称<input value={foodForm.foodName} onChange={(event) => onChange({ ...foodForm, foodName: event.target.value })} required maxLength={120} /></label>
+        <label>热量<input type="number" min="0" value={foodForm.calories} onChange={(event) => onChange({ ...foodForm, calories: event.target.value })} required /></label>
+        <label>蛋白质<input type="number" min="0" step="0.1" value={foodForm.protein} onChange={(event) => onChange({ ...foodForm, protein: event.target.value })} /></label>
+        <label>脂肪<input type="number" min="0" step="0.1" value={foodForm.fat} onChange={(event) => onChange({ ...foodForm, fat: event.target.value })} /></label>
+        <label>碳水<input type="number" min="0" step="0.1" value={foodForm.carbohydrate} onChange={(event) => onChange({ ...foodForm, carbohydrate: event.target.value })} /></label>
+        <label className="wide">备注<textarea value={foodForm.note} onChange={(event) => onChange({ ...foodForm, note: event.target.value })} maxLength={500} /></label>
+      </div>
+    </form>
+  )
+}
+
+export function ExerciseRecordForm({
+  exerciseForm,
+  saving,
+  onSubmit,
+  onChange,
+}: {
+  exerciseForm: ExerciseFormState
+  saving: boolean
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onChange: (nextForm: ExerciseFormState) => void
+}) {
+  return (
+    <form className="panel form-panel" onSubmit={onSubmit}>
+      <div className="panel-header">
+        <div>
+          <p className="eyebrow">Exercise</p>
+          <h3>新增运动</h3>
+        </div>
+        <button className="primary-button" type="submit" disabled={saving}>＋ 保存</button>
+      </div>
+      <div className="form-grid">
+        <label>日期<input type="date" value={exerciseForm.recordDate} onChange={(event) => onChange({ ...exerciseForm, recordDate: event.target.value })} required /></label>
+        <label>类型<input value={exerciseForm.exerciseType} onChange={(event) => onChange({ ...exerciseForm, exerciseType: event.target.value })} required maxLength={60} /></label>
+        <label className="wide">运动名称<input value={exerciseForm.exerciseName} onChange={(event) => onChange({ ...exerciseForm, exerciseName: event.target.value })} required maxLength={120} /></label>
+        <label>时长<input type="number" min="1" max="1440" value={exerciseForm.durationMinutes} onChange={(event) => onChange({ ...exerciseForm, durationMinutes: event.target.value })} required /></label>
+        <label>消耗<input type="number" min="0" value={exerciseForm.caloriesBurned} onChange={(event) => onChange({ ...exerciseForm, caloriesBurned: event.target.value })} required /></label>
+        <label className="wide">备注<textarea value={exerciseForm.note} onChange={(event) => onChange({ ...exerciseForm, note: event.target.value })} maxLength={500} /></label>
+      </div>
+    </form>
+  )
+}
+
+export function ProfileGoalForm({
+  profileForm,
+  saving,
+  loadingProfile,
+  onSubmit,
+  onChange,
+}: {
+  profileForm: ProfileFormState | null
+  saving: boolean
+  loadingProfile: boolean
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onChange: (nextForm: ProfileFormState) => void
+}) {
+  return (
+    <form className="panel form-panel" onSubmit={onSubmit}>
+      <div className="panel-header">
+        <div>
+          <p className="eyebrow">Profile</p>
+          <h3>基础目标</h3>
+        </div>
+        <button className="primary-button" type="submit" disabled={saving || loadingProfile}>＋ 更新</button>
+      </div>
+      {profileForm ? (
+        <div className="form-grid">
+          <label className="wide">昵称<input value={profileForm.nickname} onChange={(event) => onChange({ ...profileForm, nickname: event.target.value })} required maxLength={60} /></label>
+          <label>身高<input type="number" min="1" step="0.1" value={profileForm.heightCm} onChange={(event) => onChange({ ...profileForm, heightCm: event.target.value })} required /></label>
+          <label>当前体重<input type="number" min="1" step="0.1" value={profileForm.currentWeightKg} onChange={(event) => onChange({ ...profileForm, currentWeightKg: event.target.value })} required /></label>
+          <label>目标体重<input type="number" min="1" step="0.1" value={profileForm.targetWeightKg} onChange={(event) => onChange({ ...profileForm, targetWeightKg: event.target.value })} required /></label>
+          <label>每日目标<input type="number" min="1" value={profileForm.dailyCalorieGoal} onChange={(event) => onChange({ ...profileForm, dailyCalorieGoal: event.target.value })} required /></label>
+        </div>
+      ) : (
+        <div className="empty-state">资料未加载</div>
+      )}
+    </form>
+  )
+}

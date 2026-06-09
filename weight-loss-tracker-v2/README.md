@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-Phase 2 已经完成：后端和前端都可以本地运行，前端通过真实 API 展示仪表盘、食物记录、运动记录和目标资料，不使用假数据兜底。
+Phase 3 已经完成：后端和前端都可以本地运行，前端通过真实 API 展示仪表盘、食物记录、运动记录和目标资料，并已整理成路由、页面组件、表单组件和通用组件结构。
 
 - 产品规格：[docs/SPEC.md](docs/SPEC.md)
 - 开发计划：[docs/PLAN.md](docs/PLAN.md)
@@ -13,7 +13,7 @@ Phase 2 已经完成：后端和前端都可以本地运行，前端通过真实
 ## 建议技术方向
 
 - 后端：Spring Boot 4 + Java 17 target，已在本机 Java 21 环境验证
-- 前端：React + Vite + TypeScript
+- 前端：React + Vite + TypeScript + React Router
 - 数据库：H2 文件数据库，接口稳定后再考虑切 MySQL
 - 架构：先做单用户 demo，后续再扩展登录、多用户和 AI 功能
 
@@ -40,8 +40,7 @@ H2 控制台：`http://localhost:8080/h2-console`
 ```powershell
 cd web
 npm install
-npm run lint
-npm run build
+npm run check
 npm run dev
 ```
 
@@ -54,11 +53,10 @@ cd backend
 .\mvnw.cmd test
 
 cd ..\web
-npm run lint
-npm run build
+npm run check
 ```
 
-同时已完成浏览器联调：前端通过 Vite proxy 调用后端汇总接口，新增食物记录后仪表盘汇总会实时变化。
+同时已完成浏览器联调：前端通过 Vite proxy 调用后端汇总接口，新增食物记录后仪表盘汇总会实时变化。Phase 3 后前端支持 `/`、`/food`、`/exercise`、`/profile` 四个路由。
 
 ## MVP 目标
 

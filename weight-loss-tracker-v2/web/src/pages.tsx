@@ -1,0 +1,213 @@
+import type { FormEvent } from 'react'
+import type { DailySummary, RecentSummary, UserProfile } from './api'
+import { ExerciseRecordForm, FoodRecordForm, MetricCard, ProfileGoalForm, RecordListPanel } from './components'
+import { goalLabels, mealLabels } from './constants'
+import type { ExerciseFormState, FoodFormState, ProfileFormState } from './types'
+import { formatShortDate } from './utils'
+
+export function DashboardPage({
+  dailySummary,
+  recentSummaries,
+  loadingDashboard,
+  saving,
+  onDeleteFoodRecord,
+  onDeleteExerciseRecord,
+}: {
+  dailySummary: DailySummary | null
+  recentSummaries: RecentSummary[]
+  loadingDashboard: boolean
+  saving: boolean
+  onDeleteFoodRecord: (id: number) => void
+  onDeleteExerciseRecord: (id: number) => void
+}) {
+  const trendMax = Math.max(
+    1,
+    ...recentSummaries.flatMap((item) => [item.totalCaloriesConsumed, item.totalCaloriesBurned, item.dailyCalorieGoal]),
+  )
+  const goalPercent = dailySummary
+    ? Math.round((dailySummary.netCalories / Math.max(1, dailySummary.dailyCalorieGoal)) * 100)
+    : 0
+
+  return (
+    <section className="page-grid dashboard-grid">
+      <div className="metric-row">
+        <MetricCard label="摄入" value={dailySummary?.totalCaloriesConsumed} suffix="kcal" tone="ink" />
+        <MetricCard label="消耗" value={dailySummary?.totalCaloriesBurned} suffix="kcal" tone="teal" />
+        <MetricCard label="净热量" value={dailySummary?.netCalories} suffix="kcal" tone="amber" />
+        <MetricCard label="目标差" value={dailySummary?.calorieDifference} suffix="kcal" tone="berry" />
+      </div>
+
+      <section className="panel goal-panel">
+        <div>
+          <p className="eyebrow">目标状态</p>
+          <h3>{dailySummary ? goalLabels[dailySummary.goalStatus] : '等待数据'}</h3>
+        </div>
+        <div className={`goal-ring ${dailySummary?.goalStatus.toLowerCase() || 'under'}`}>{goalPercent}%</div>
+        <div className="macro-row">
+          <span>蛋白质 {dailySummary?.totalProtein ?? 0}g</span>
+          <span>脂肪 {dailySummary?.totalFat ?? 0}g</span>
+          <span>碳水 {dailySummary?.totalCarbohydrate ?? 0}g</span>
+        </div>
+      </section>
+
+      <section className="panel trend-panel">
+        <div className="panel-header">
+          <div>
+            <p className="eyebrow">最近 7 天</p>
+            <h3>热量趋势</h3>
+          </div>
+        </div>
+        <div className="trend-chart">
+          {recentSummaries.map((item) => (
+            <div className="trend-day" key={item.date}>
+              <div className="trend-bars">
+                <span style={{ height: `${Math.max(6, (item.totalCaloriesConsumed / trendMax) * 100)}%` }}></span>
+                <span style={{ height: `${Math.max(6, (item.totalCaloriesBurned / trendMax) * 100)}%` }}></span>
+              </div>
+              <small>{formatShortDate(item.date)}</small>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <RecordListPanel
+        title="今日食物"
+        emptyText="当天没有食物记录"
+        rows={dailySummary?.foodRecords.map((record) => ({
+          id: record.id,
+          primary: record.foodName,
+          secondary: mealLabels[record.mealType],
+          value: `${record.calories} kcal`,
+          onDelete: () => onDeleteFoodRecord(record.id),
+        }))}
+        loading={loadingDashboard}
+        saving={saving}
+      />
+
+      <RecordListPanel
+        title="今日运动"
+        emptyText="当天没有运动记录"
+        rows={dailySummary?.exerciseRecords.map((record) => ({
+          id: record.id,
+          primary: record.exerciseName,
+          secondary: `${record.exerciseType} · ${record.durationMinutes} 分钟`,
+          value: `${record.caloriesBurned} kcal`,
+          onDelete: () => onDeleteExerciseRecord(record.id),
+        }))}
+        loading={loadingDashboard}
+        saving={saving}
+      />
+    </section>
+  )
+}
+
+export function FoodRecordPage({
+  foodForm,
+  dailySummary,
+  loadingDashboard,
+  saving,
+  onFoodFormChange,
+  onFoodSubmit,
+  onDeleteFoodRecord,
+}: {
+  foodForm: FoodFormState
+  dailySummary: DailySummary | null
+  loadingDashboard: boolean
+  saving: boolean
+  onFoodFormChange: (nextForm: FoodFormState) => void
+  onFoodSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onDeleteFoodRecord: (id: number) => void
+}) {
+  return (
+    <section className="split-page">
+      <FoodRecordForm foodForm={foodForm} saving={saving} onSubmit={onFoodSubmit} onChange={onFoodFormChange} />
+      <RecordListPanel
+        title="当天食物"
+        emptyText="当天没有食物记录"
+        rows={dailySummary?.foodRecords.map((record) => ({
+          id: record.id,
+          primary: record.foodName,
+          secondary: `${mealLabels[record.mealType]} · 蛋白质 ${record.protein}g`,
+          value: `${record.calories} kcal`,
+          onDelete: () => onDeleteFoodRecord(record.id),
+        }))}
+        loading={loadingDashboard}
+        saving={saving}
+      />
+    </section>
+  )
+}
+
+export function ExerciseRecordPage({
+  exerciseForm,
+  dailySummary,
+  loadingDashboard,
+  saving,
+  onExerciseFormChange,
+  onExerciseSubmit,
+  onDeleteExerciseRecord,
+}: {
+  exerciseForm: ExerciseFormState
+  dailySummary: DailySummary | null
+  loadingDashboard: boolean
+  saving: boolean
+  onExerciseFormChange: (nextForm: ExerciseFormState) => void
+  onExerciseSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onDeleteExerciseRecord: (id: number) => void
+}) {
+  return (
+    <section className="split-page">
+      <ExerciseRecordForm exerciseForm={exerciseForm} saving={saving} onSubmit={onExerciseSubmit} onChange={onExerciseFormChange} />
+      <RecordListPanel
+        title="当天运动"
+        emptyText="当天没有运动记录"
+        rows={dailySummary?.exerciseRecords.map((record) => ({
+          id: record.id,
+          primary: record.exerciseName,
+          secondary: `${record.exerciseType} · ${record.durationMinutes} 分钟`,
+          value: `${record.caloriesBurned} kcal`,
+          onDelete: () => onDeleteExerciseRecord(record.id),
+        }))}
+        loading={loadingDashboard}
+        saving={saving}
+      />
+    </section>
+  )
+}
+
+export function ProfilePage({
+  profile,
+  profileForm,
+  loadingProfile,
+  saving,
+  onProfileFormChange,
+  onProfileSubmit,
+}: {
+  profile: UserProfile | null
+  profileForm: ProfileFormState | null
+  loadingProfile: boolean
+  saving: boolean
+  onProfileFormChange: (nextForm: ProfileFormState) => void
+  onProfileSubmit: (event: FormEvent<HTMLFormElement>) => void
+}) {
+  return (
+    <section className="split-page profile-page">
+      <ProfileGoalForm
+        profileForm={profileForm}
+        saving={saving}
+        loadingProfile={loadingProfile}
+        onSubmit={onProfileSubmit}
+        onChange={onProfileFormChange}
+      />
+      <section className="panel profile-summary">
+        <p className="eyebrow">Health</p>
+        <h3>{profile?.nickname || '未加载'}</h3>
+        <div className="profile-metrics">
+          <MetricCard label="BMI" value={profile?.bmi} suffix="" tone="ink" />
+          <MetricCard label="待减重" value={profile?.weightToLoseKg} suffix="kg" tone="teal" />
+          <MetricCard label="当前体重" value={profile?.currentWeightKg} suffix="kg" tone="amber" />
+        </div>
+      </section>
+    </section>
+  )
+}
