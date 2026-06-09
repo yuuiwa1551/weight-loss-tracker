@@ -1,10 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { api, type DailySummary, type RecentSummary, type UserProfile } from './api'
+import { api, type DailySummary, type RecentSummary, type UserProfile, type WeightRecord } from './api'
 import { AppShell } from './components'
-import { DashboardPage, ExerciseRecordPage, FoodRecordPage, ProfilePage } from './pages'
+import { DashboardPage, ExerciseRecordPage, FoodRecordPage, ProfilePage, WeightRecordPage } from './pages'
 import { getPageByPath, pages } from './routes'
-import type { ExerciseFormState, FoodFormState, Notice, ProfileFormState } from './types'
+import type { ExerciseFormState, FoodFormState, Notice, ProfileFormState, WeightFormState } from './types'
 import { getErrorMessage, today } from './utils'
 import './App.css'
 
@@ -28,6 +28,15 @@ function initialExerciseForm(date: string): ExerciseFormState {
     exerciseName: '',
     durationMinutes: '',
     caloriesBurned: '',
+    note: '',
+  }
+}
+
+function initialWeightForm(date: string): WeightFormState {
+  return {
+    recordDate: date,
+    weightKg: '',
+    bodyFatPercentage: '',
     note: '',
   }
 }
@@ -57,11 +66,14 @@ function AppContent() {
   const [selectedDate, setSelectedDate] = useState(today())
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null)
   const [recentSummaries, setRecentSummaries] = useState<RecentSummary[]>([])
+  const [weightRecords, setWeightRecords] = useState<WeightRecord[]>([])
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [foodForm, setFoodForm] = useState<FoodFormState>(() => initialFoodForm(selectedDate))
   const [exerciseForm, setExerciseForm] = useState<ExerciseFormState>(() => initialExerciseForm(selectedDate))
+  const [weightForm, setWeightForm] = useState<WeightFormState>(() => initialWeightForm(selectedDate))
   const [profileForm, setProfileForm] = useState<ProfileFormState | null>(null)
   const [loadingDashboard, setLoadingDashboard] = useState(true)
+  const [loadingWeightRecords, setLoadingWeightRecords] = useState(true)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<Notice | null>(null)
@@ -81,11 +93,24 @@ function AppContent() {
     }
   }
 
+  async function loadWeightRecords() {
+    setLoadingWeightRecords(true)
+    try {
+      setWeightRecords(await api.getRecentWeightRecords(30))
+    } catch (error) {
+      setWeightRecords([])
+      setNotice({ type: 'error', message: getErrorMessage(error, '体重记录加载失败') })
+    } finally {
+      setLoadingWeightRecords(false)
+    }
+  }
+
   function handleSelectedDateChange(nextDate: string) {
     setLoadingDashboard(true)
     setSelectedDate(nextDate)
     setFoodForm((currentForm) => ({ ...currentForm, recordDate: nextDate }))
     setExerciseForm((currentForm) => ({ ...currentForm, recordDate: nextDate }))
+    setWeightForm((currentForm) => ({ ...currentForm, recordDate: nextDate }))
   }
 
   useEffect(() => {
@@ -130,6 +155,30 @@ function AppContent() {
         setNotice({ type: 'error', message: getErrorMessage(error, '资料加载失败') })
       } finally {
         if (!ignore) setLoadingProfile(false)
+      }
+    }
+
+    void load()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let ignore = false
+
+    async function load() {
+      try {
+        const records = await api.getRecentWeightRecords(30)
+        if (ignore) return
+        setWeightRecords(records)
+      } catch (error) {
+        if (ignore) return
+        setWeightRecords([])
+        setNotice({ type: 'error', message: getErrorMessage(error, '体重记录加载失败') })
+      } finally {
+        if (!ignore) setLoadingWeightRecords(false)
       }
     }
 
@@ -216,6 +265,29 @@ function AppContent() {
     }
   }
 
+  async function handleWeightSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault()
+    setSaving(true)
+    setNotice(null)
+    try {
+      const recordDate = weightForm.recordDate
+      await api.createWeightRecord({
+        recordDate,
+        weightKg: toNumber(weightForm.weightKg),
+        bodyFatPercentage: weightForm.bodyFatPercentage ? toNumber(weightForm.bodyFatPercentage) : null,
+        note: optionalNote(weightForm.note),
+      })
+      setWeightForm(initialWeightForm(recordDate))
+      setSelectedDate(recordDate)
+      await loadWeightRecords()
+      setNotice({ type: 'success', message: '体重记录已保存' })
+    } catch (error) {
+      setNotice({ type: 'error', message: getErrorMessage(error, '体重记录保存失败') })
+    } finally {
+      setSaving(false)
+    }
+  }
+
   async function deleteFoodRecord(id: number) {
     setSaving(true)
     setNotice(null)
@@ -237,6 +309,20 @@ function AppContent() {
       await api.deleteExerciseRecord(id)
       await loadDashboard(selectedDate)
       setNotice({ type: 'success', message: '运动记录已删除' })
+    } catch (error) {
+      setNotice({ type: 'error', message: getErrorMessage(error, '删除失败') })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  async function deleteWeightRecord(id: number) {
+    setSaving(true)
+    setNotice(null)
+    try {
+      await api.deleteWeightRecord(id)
+      await loadWeightRecords()
+      setNotice({ type: 'success', message: '体重记录已删除' })
     } catch (error) {
       setNotice({ type: 'error', message: getErrorMessage(error, '删除失败') })
     } finally {
@@ -291,6 +377,21 @@ function AppContent() {
               onExerciseFormChange={setExerciseForm}
               onExerciseSubmit={handleExerciseSubmit}
               onDeleteExerciseRecord={(id) => void deleteExerciseRecord(id)}
+            />
+          }
+        />
+        <Route
+          path="weight"
+          element={
+            <WeightRecordPage
+              weightForm={weightForm}
+              weightRecords={weightRecords}
+              profile={profile}
+              loadingWeightRecords={loadingWeightRecords}
+              saving={saving}
+              onWeightFormChange={setWeightForm}
+              onWeightSubmit={handleWeightSubmit}
+              onDeleteWeightRecord={(id) => void deleteWeightRecord(id)}
             />
           }
         />

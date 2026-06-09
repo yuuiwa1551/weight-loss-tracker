@@ -1,8 +1,8 @@
 import type { FormEvent } from 'react'
-import type { DailySummary, RecentSummary, UserProfile } from './api'
-import { ExerciseRecordForm, FoodRecordForm, MetricCard, ProfileGoalForm, RecordListPanel } from './components'
+import type { DailySummary, RecentSummary, UserProfile, WeightRecord } from './api'
+import { ExerciseRecordForm, FoodRecordForm, MetricCard, ProfileGoalForm, RecordListPanel, WeightRecordForm } from './components'
 import { goalLabels, mealLabels } from './constants'
-import type { ExerciseFormState, FoodFormState, ProfileFormState } from './types'
+import type { ExerciseFormState, FoodFormState, ProfileFormState, WeightFormState } from './types'
 import { formatShortDate } from './utils'
 
 export function DashboardPage({
@@ -171,6 +171,86 @@ export function ExerciseRecordPage({
         loading={loadingDashboard}
         saving={saving}
       />
+    </section>
+  )
+}
+
+export function WeightRecordPage({
+  weightForm,
+  weightRecords,
+  profile,
+  loadingWeightRecords,
+  saving,
+  onWeightFormChange,
+  onWeightSubmit,
+  onDeleteWeightRecord,
+}: {
+  weightForm: WeightFormState
+  weightRecords: WeightRecord[]
+  profile: UserProfile | null
+  loadingWeightRecords: boolean
+  saving: boolean
+  onWeightFormChange: (nextForm: WeightFormState) => void
+  onWeightSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onDeleteWeightRecord: (id: number) => void
+}) {
+  const latestWeight = weightRecords.at(-1)?.weightKg
+  const firstWeight = weightRecords[0]?.weightKg
+  const weightChange = latestWeight !== undefined && firstWeight !== undefined ? Number((latestWeight - firstWeight).toFixed(1)) : undefined
+  const targetGap = latestWeight !== undefined && profile ? Number((latestWeight - profile.targetWeightKg).toFixed(1)) : undefined
+  const minWeight = Math.min(...weightRecords.map((record) => record.weightKg), profile?.targetWeightKg ?? Number.POSITIVE_INFINITY)
+  const maxWeight = Math.max(...weightRecords.map((record) => record.weightKg), profile?.currentWeightKg ?? 0)
+  const weightRange = Math.max(1, maxWeight - minWeight)
+
+  return (
+    <section className="page-grid weight-page">
+      <div className="metric-row">
+        <MetricCard label="最新体重" value={latestWeight} suffix="kg" tone="ink" />
+        <MetricCard label="目标体重" value={profile?.targetWeightKg} suffix="kg" tone="teal" />
+        <MetricCard label="距离目标" value={targetGap} suffix="kg" tone="amber" />
+        <MetricCard label="30天变化" value={weightChange} suffix="kg" tone="berry" />
+      </div>
+
+      <section className="panel weight-trend-panel">
+        <div className="panel-header">
+          <div>
+            <p className="eyebrow">最近 30 天</p>
+            <h3>体重趋势</h3>
+          </div>
+        </div>
+        {loadingWeightRecords ? (
+          <div className="empty-state">加载中</div>
+        ) : weightRecords.length > 0 ? (
+          <div className="weight-trend">
+            {weightRecords.map((record) => (
+              <div className="weight-point" key={record.id}>
+                <span style={{ height: `${20 + ((record.weightKg - minWeight) / weightRange) * 80}%` }}></span>
+                <strong>{record.weightKg}kg</strong>
+                <small>{formatShortDate(record.recordDate)}</small>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="empty-state">暂无体重记录</div>
+        )}
+      </section>
+
+      <section className="split-page weight-entry">
+        <WeightRecordForm weightForm={weightForm} saving={saving} onSubmit={onWeightSubmit} onChange={onWeightFormChange} />
+        <RecordListPanel
+          title="体重记录"
+          emptyText="暂无体重记录"
+          rows={weightRecords.map((record) => ({
+            id: record.id,
+            primary: `${record.weightKg} kg`,
+            secondary: `${record.recordDate}${record.bodyFatPercentage === null ? '' : ` · 体脂 ${record.bodyFatPercentage}%`}`,
+            value: record.note || '记录',
+            onDelete: () => onDeleteWeightRecord(record.id),
+          }))}
+          loading={loadingWeightRecords}
+          saving={saving}
+        />
+      </section>
     </section>
   )
 }

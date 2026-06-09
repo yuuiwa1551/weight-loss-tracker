@@ -3,7 +3,7 @@ import { NavLink } from 'react-router-dom'
 import type { MealType, UserProfile } from './api'
 import { mealLabels } from './constants'
 import { pages, type PageConfig } from './routes'
-import type { ExerciseFormState, FoodFormState, Notice, ProfileFormState, RecordListRow } from './types'
+import type { ExerciseFormState, FoodFormState, Notice, ProfileFormState, RecordListRow, WeightFormState } from './types'
 
 interface AppShellProps {
   activePage: PageConfig
@@ -194,6 +194,36 @@ export function ExerciseRecordForm({
         <label>时长<input type="number" min="1" max="1440" value={exerciseForm.durationMinutes} onChange={(event) => onChange({ ...exerciseForm, durationMinutes: event.target.value })} required /></label>
         <label>消耗<input type="number" min="0" value={exerciseForm.caloriesBurned} onChange={(event) => onChange({ ...exerciseForm, caloriesBurned: event.target.value })} required /></label>
         <label className="wide">备注<textarea value={exerciseForm.note} onChange={(event) => onChange({ ...exerciseForm, note: event.target.value })} maxLength={500} /></label>
+      </div>
+    </form>
+  )
+}
+
+export function WeightRecordForm({
+  weightForm,
+  saving,
+  onSubmit,
+  onChange,
+}: {
+  weightForm: WeightFormState
+  saving: boolean
+  onSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onChange: (nextForm: WeightFormState) => void
+}) {
+  return (
+    <form className="panel form-panel" onSubmit={onSubmit}>
+      <div className="panel-header">
+        <div>
+          <p className="eyebrow">Weight</p>
+          <h3>新增体重</h3>
+        </div>
+        <button className="primary-button" type="submit" disabled={saving}>＋ 保存</button>
+      </div>
+      <div className="form-grid">
+        <label>日期<input type="date" value={weightForm.recordDate} onChange={(event) => onChange({ ...weightForm, recordDate: event.target.value })} required /></label>
+        <label>体重<input type="number" min="1" step="0.1" value={weightForm.weightKg} onChange={(event) => onChange({ ...weightForm, weightKg: event.target.value })} required /></label>
+        <label>体脂率<input type="number" min="0" max="100" step="0.1" value={weightForm.bodyFatPercentage} onChange={(event) => onChange({ ...weightForm, bodyFatPercentage: event.target.value })} /></label>
+        <label className="wide">备注<textarea value={weightForm.note} onChange={(event) => onChange({ ...weightForm, note: event.target.value })} maxLength={500} /></label>
       </div>
     </form>
   )

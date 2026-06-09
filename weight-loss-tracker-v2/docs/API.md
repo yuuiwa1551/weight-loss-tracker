@@ -134,6 +134,58 @@ GET /api/exercise-records?date=2026-06-08
 DELETE /api/exercise-records/{id}
 ```
 
+## Weight Records
+
+### 新增体重记录
+
+```http
+POST /api/weight-records
+Content-Type: application/json
+```
+
+请求体：
+
+```json
+{
+  "recordDate": "2026-06-08",
+  "weightKg": 74.2,
+  "bodyFatPercentage": 23.4,
+  "note": "optional"
+}
+```
+
+`bodyFatPercentage` 和 `note` 可为空。
+
+### 查询近期体重记录
+
+```http
+GET /api/weight-records/recent?days=30
+```
+
+`days` 范围会被后端限制在 `7` 到 `365`，默认 `30`。
+
+响应 `data`：
+
+```json
+[
+  {
+    "id": 1,
+    "recordDate": "2026-06-08",
+    "weightKg": 74.2,
+    "bodyFatPercentage": 23.4,
+    "note": "optional",
+    "createdAt": "2026-06-08T10:00:00",
+    "updatedAt": "2026-06-08T10:00:00"
+  }
+]
+```
+
+### 删除体重记录
+
+```http
+DELETE /api/weight-records/{id}
+```
+
 ## Summaries
 
 ### 每日汇总

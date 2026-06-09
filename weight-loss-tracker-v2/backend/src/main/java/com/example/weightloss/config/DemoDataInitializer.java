@@ -4,9 +4,11 @@ import com.example.weightloss.entity.ExerciseRecord;
 import com.example.weightloss.entity.FoodRecord;
 import com.example.weightloss.entity.MealType;
 import com.example.weightloss.entity.UserProfile;
+import com.example.weightloss.entity.WeightRecord;
 import com.example.weightloss.repository.ExerciseRecordRepository;
 import com.example.weightloss.repository.FoodRecordRepository;
 import com.example.weightloss.repository.UserProfileRepository;
+import com.example.weightloss.repository.WeightRecordRepository;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -19,15 +21,18 @@ public class DemoDataInitializer implements CommandLineRunner {
 	private final UserProfileRepository userProfileRepository;
 	private final FoodRecordRepository foodRecordRepository;
 	private final ExerciseRecordRepository exerciseRecordRepository;
+	private final WeightRecordRepository weightRecordRepository;
 
 	public DemoDataInitializer(
 		UserProfileRepository userProfileRepository,
 		FoodRecordRepository foodRecordRepository,
-		ExerciseRecordRepository exerciseRecordRepository
+		ExerciseRecordRepository exerciseRecordRepository,
+		WeightRecordRepository weightRecordRepository
 	) {
 		this.userProfileRepository = userProfileRepository;
 		this.foodRecordRepository = foodRecordRepository;
 		this.exerciseRecordRepository = exerciseRecordRepository;
+		this.weightRecordRepository = weightRecordRepository;
 	}
 
 	@Override
@@ -45,6 +50,14 @@ public class DemoDataInitializer implements CommandLineRunner {
 
 		if (exerciseRecordRepository.countByRecordDate(today) == 0) {
 			exerciseRecordRepository.save(new ExerciseRecord(today, "Cardio", "Easy run", 30, 280, "Seed exercise"));
+		}
+
+		if (weightRecordRepository.count() == 0) {
+			weightRecordRepository.save(new WeightRecord(today.minusDays(28), new BigDecimal("76.4"), new BigDecimal("24.8"), "Seed baseline"));
+			weightRecordRepository.save(new WeightRecord(today.minusDays(21), new BigDecimal("75.9"), new BigDecimal("24.4"), "Seed trend"));
+			weightRecordRepository.save(new WeightRecord(today.minusDays(14), new BigDecimal("75.3"), new BigDecimal("24.0"), "Seed trend"));
+			weightRecordRepository.save(new WeightRecord(today.minusDays(7), new BigDecimal("74.8"), new BigDecimal("23.7"), "Seed trend"));
+			weightRecordRepository.save(new WeightRecord(today, profile.getCurrentWeightKg(), new BigDecimal("23.5"), "Seed current"));
 		}
 	}
 

@@ -56,7 +56,7 @@ cd ..\web
 npm run check
 ```
 
-同时已完成浏览器联调：前端通过 Vite proxy 调用后端汇总接口，新增食物记录后仪表盘汇总会实时变化。Phase 3 后前端支持 `/`、`/food`、`/exercise`、`/profile` 四个路由。
+同时已完成浏览器联调：前端通过 Vite proxy 调用后端汇总接口，新增食物记录后仪表盘汇总会实时变化。Phase 4 开始加入体重记录，前端支持 `/`、`/food`、`/exercise`、`/weight`、`/profile` 五个路由。
 
 ## MVP 目标
 

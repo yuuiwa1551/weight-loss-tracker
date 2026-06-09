@@ -46,6 +46,16 @@ export interface ExerciseRecord {
   updatedAt: string
 }
 
+export interface WeightRecord {
+  id: number
+  recordDate: string
+  weightKg: number
+  bodyFatPercentage: number | null
+  note: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface DailySummary {
   date: string
   totalCaloriesConsumed: number
@@ -99,6 +109,13 @@ export interface CreateExerciseRecordRequest {
   note?: string | null
 }
 
+export interface CreateWeightRecordRequest {
+  recordDate: string
+  weightKg: number
+  bodyFatPercentage?: number | null
+  note?: string | null
+}
+
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '/api'
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
@@ -142,6 +159,13 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   deleteExerciseRecord: (id: number) => request<null>(`/exercise-records/${id}`, { method: 'DELETE' }),
+  getRecentWeightRecords: (days = 30) => request<WeightRecord[]>(`/weight-records/recent?days=${days}`),
+  createWeightRecord: (payload: CreateWeightRecordRequest) =>
+    request<WeightRecord>('/weight-records', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  deleteWeightRecord: (id: number) => request<null>(`/weight-records/${id}`, { method: 'DELETE' }),
   getDailySummary: (date?: string) => request<DailySummary>(`/summaries/daily${dateQuery(date)}`),
   getRecentSummaries: (days = 7) => request<RecentSummary[]>(`/summaries/recent?days=${days}`),
 }

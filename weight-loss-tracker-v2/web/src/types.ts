@@ -28,6 +28,13 @@ export interface ProfileFormState {
   dailyCalorieGoal: string
 }
 
+export interface WeightFormState {
+  recordDate: string
+  weightKg: string
+  bodyFatPercentage: string
+  note: string
+}
+
 export interface Notice {
   type: 'success' | 'error'
   message: string

@@ -79,4 +79,28 @@ class WeightLossTrackerBackendApplicationTests {
 			.andExpect(jsonPath("$.data.exerciseName").value("Full-body session"));
 	}
 
+	@Test
+	void canCreateAndListWeightRecords() throws Exception {
+		String weightJson = """
+			{
+			  "recordDate": "2026-06-08",
+			  "weightKg": 74.2,
+			  "bodyFatPercentage": 23.4,
+			  "note": "integration test"
+			}
+			""";
+
+		mockMvc.perform(post("/api/weight-records")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(weightJson))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.weightKg").value(74.2));
+
+		mockMvc.perform(get("/api/weight-records/recent?days=30"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data").isArray());
+	}
+
 }
