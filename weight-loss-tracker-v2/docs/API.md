@@ -186,6 +186,43 @@ GET /api/weight-records/recent?days=30
 DELETE /api/weight-records/{id}
 ```
 
+## Reports
+
+### 周期报表
+
+```http
+GET /api/reports/overview?days=7
+```
+
+`days` 范围是 `7` 到 `365`。前端当前使用 `7` 作为周报，`30` 作为月报。
+
+响应 `data`：
+
+```json
+{
+  "startDate": "2026-06-03",
+  "endDate": "2026-06-09",
+  "days": 7,
+  "totalCaloriesConsumed": 780,
+  "totalCaloriesBurned": 280,
+  "netCalories": 500,
+  "averageCaloriesConsumed": 111.4,
+  "averageCaloriesBurned": 40.0,
+  "averageNetCalories": 71.4,
+  "averageProtein": 7.1,
+  "averageFat": 3.6,
+  "averageCarbohydrate": 11.4,
+  "dailyCalorieGoal": 1900,
+  "daysUnderGoal": 7,
+  "daysMeetGoal": 0,
+  "daysOverGoal": 0,
+  "startWeightKg": 74.8,
+  "endWeightKg": 75.0,
+  "weightChangeKg": 0.2,
+  "dailySummaries": []
+}
+```
+
 ## Summaries
 
 ### 每日汇总

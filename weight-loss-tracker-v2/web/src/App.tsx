@@ -1,8 +1,8 @@
 import { useEffect, useState, type FormEvent } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { api, type DailySummary, type RecentSummary, type UserProfile, type WeightRecord } from './api'
+import { api, type DailySummary, type PeriodReport, type RecentSummary, type UserProfile, type WeightRecord } from './api'
 import { AppShell } from './components'
-import { DashboardPage, ExerciseRecordPage, FoodRecordPage, ProfilePage, WeightRecordPage } from './pages'
+import { DashboardPage, ExerciseRecordPage, FoodRecordPage, ProfilePage, ReportsPage, WeightRecordPage } from './pages'
 import { getPageByPath, pages } from './routes'
 import type { ExerciseFormState, FoodFormState, Notice, ProfileFormState, WeightFormState } from './types'
 import { getErrorMessage, today } from './utils'
@@ -67,6 +67,8 @@ function AppContent() {
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null)
   const [recentSummaries, setRecentSummaries] = useState<RecentSummary[]>([])
   const [weightRecords, setWeightRecords] = useState<WeightRecord[]>([])
+  const [weeklyReport, setWeeklyReport] = useState<PeriodReport | null>(null)
+  const [monthlyReport, setMonthlyReport] = useState<PeriodReport | null>(null)
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [foodForm, setFoodForm] = useState<FoodFormState>(() => initialFoodForm(selectedDate))
   const [exerciseForm, setExerciseForm] = useState<ExerciseFormState>(() => initialExerciseForm(selectedDate))
@@ -74,6 +76,7 @@ function AppContent() {
   const [profileForm, setProfileForm] = useState<ProfileFormState | null>(null)
   const [loadingDashboard, setLoadingDashboard] = useState(true)
   const [loadingWeightRecords, setLoadingWeightRecords] = useState(true)
+  const [loadingReports, setLoadingReports] = useState(true)
   const [loadingProfile, setLoadingProfile] = useState(true)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<Notice | null>(null)
@@ -102,6 +105,21 @@ function AppContent() {
       setNotice({ type: 'error', message: getErrorMessage(error, '体重记录加载失败') })
     } finally {
       setLoadingWeightRecords(false)
+    }
+  }
+
+  async function loadReports() {
+    setLoadingReports(true)
+    try {
+      const [weekly, monthly] = await Promise.all([api.getPeriodReport(7), api.getPeriodReport(30)])
+      setWeeklyReport(weekly)
+      setMonthlyReport(monthly)
+    } catch (error) {
+      setWeeklyReport(null)
+      setMonthlyReport(null)
+      setNotice({ type: 'error', message: getErrorMessage(error, '周期报表加载失败') })
+    } finally {
+      setLoadingReports(false)
     }
   }
 
@@ -155,6 +173,32 @@ function AppContent() {
         setNotice({ type: 'error', message: getErrorMessage(error, '资料加载失败') })
       } finally {
         if (!ignore) setLoadingProfile(false)
+      }
+    }
+
+    void load()
+
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let ignore = false
+
+    async function load() {
+      try {
+        const [weekly, monthly] = await Promise.all([api.getPeriodReport(7), api.getPeriodReport(30)])
+        if (ignore) return
+        setWeeklyReport(weekly)
+        setMonthlyReport(monthly)
+      } catch (error) {
+        if (ignore) return
+        setWeeklyReport(null)
+        setMonthlyReport(null)
+        setNotice({ type: 'error', message: getErrorMessage(error, '周期报表加载失败') })
+      } finally {
+        if (!ignore) setLoadingReports(false)
       }
     }
 
@@ -280,6 +324,7 @@ function AppContent() {
       setWeightForm(initialWeightForm(recordDate))
       setSelectedDate(recordDate)
       await loadWeightRecords()
+      await loadReports()
       setNotice({ type: 'success', message: '体重记录已保存' })
     } catch (error) {
       setNotice({ type: 'error', message: getErrorMessage(error, '体重记录保存失败') })
@@ -322,6 +367,7 @@ function AppContent() {
     try {
       await api.deleteWeightRecord(id)
       await loadWeightRecords()
+      await loadReports()
       setNotice({ type: 'success', message: '体重记录已删除' })
     } catch (error) {
       setNotice({ type: 'error', message: getErrorMessage(error, '删除失败') })
@@ -392,6 +438,16 @@ function AppContent() {
               onWeightFormChange={setWeightForm}
               onWeightSubmit={handleWeightSubmit}
               onDeleteWeightRecord={(id) => void deleteWeightRecord(id)}
+            />
+          }
+        />
+        <Route
+          path="reports"
+          element={
+            <ReportsPage
+              weeklyReport={weeklyReport}
+              monthlyReport={monthlyReport}
+              loadingReports={loadingReports}
             />
           }
         />

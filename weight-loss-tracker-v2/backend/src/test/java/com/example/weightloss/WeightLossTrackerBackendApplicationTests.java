@@ -103,4 +103,14 @@ class WeightLossTrackerBackendApplicationTests {
 			.andExpect(jsonPath("$.data").isArray());
 	}
 
+	@Test
+	void reportsEndpointWorks() throws Exception {
+		mockMvc.perform(get("/api/reports/overview?days=7"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.success").value(true))
+			.andExpect(jsonPath("$.data.days").value(7))
+			.andExpect(jsonPath("$.data.totalCaloriesConsumed").exists())
+			.andExpect(jsonPath("$.data.dailySummaries").isArray());
+	}
+
 }

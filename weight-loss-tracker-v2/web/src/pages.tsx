@@ -1,5 +1,5 @@
 import type { FormEvent } from 'react'
-import type { DailySummary, RecentSummary, UserProfile, WeightRecord } from './api'
+import type { DailySummary, PeriodReport, RecentSummary, UserProfile, WeightRecord } from './api'
 import { ExerciseRecordForm, FoodRecordForm, MetricCard, ProfileGoalForm, RecordListPanel, WeightRecordForm } from './components'
 import { goalLabels, mealLabels } from './constants'
 import type { ExerciseFormState, FoodFormState, ProfileFormState, WeightFormState } from './types'
@@ -251,6 +251,78 @@ export function WeightRecordPage({
           saving={saving}
         />
       </section>
+    </section>
+  )
+}
+
+export function ReportsPage({
+  weeklyReport,
+  monthlyReport,
+  loadingReports,
+}: {
+  weeklyReport: PeriodReport | null
+  monthlyReport: PeriodReport | null
+  loadingReports: boolean
+}) {
+  return (
+    <section className="report-grid">
+      <PeriodReportPanel title="7 天周报" report={weeklyReport} loading={loadingReports} />
+      <PeriodReportPanel title="30 天月报" report={monthlyReport} loading={loadingReports} />
+    </section>
+  )
+}
+
+function PeriodReportPanel({ title, report, loading }: { title: string; report: PeriodReport | null; loading: boolean }) {
+  if (loading) {
+    return (
+      <section className="panel report-panel">
+        <div className="empty-state">加载中</div>
+      </section>
+    )
+  }
+
+  if (!report) {
+    return (
+      <section className="panel report-panel">
+        <div className="empty-state">报表未加载</div>
+      </section>
+    )
+  }
+
+  const trendMax = Math.max(1, ...report.dailySummaries.map((summary) => summary.totalCaloriesConsumed))
+
+  return (
+    <section className="panel report-panel">
+      <div className="panel-header">
+        <div>
+          <p className="eyebrow">{report.startDate} 至 {report.endDate}</p>
+          <h3>{title}</h3>
+        </div>
+      </div>
+      <div className="report-stats">
+        <div><span>总摄入</span><strong>{report.totalCaloriesConsumed}</strong><small>kcal</small></div>
+        <div><span>总消耗</span><strong>{report.totalCaloriesBurned}</strong><small>kcal</small></div>
+        <div><span>平均净热量</span><strong>{report.averageNetCalories}</strong><small>kcal</small></div>
+        <div><span>体重变化</span><strong>{report.weightChangeKg ?? '—'}</strong><small>kg</small></div>
+      </div>
+      <div className="report-chips">
+        <span>低于目标 {report.daysUnderGoal} 天</span>
+        <span>接近目标 {report.daysMeetGoal} 天</span>
+        <span>超过目标 {report.daysOverGoal} 天</span>
+      </div>
+      <div className="report-chips">
+        <span>蛋白质均值 {report.averageProtein}g</span>
+        <span>脂肪均值 {report.averageFat}g</span>
+        <span>碳水均值 {report.averageCarbohydrate}g</span>
+      </div>
+      <div className="report-bars">
+        {report.dailySummaries.map((summary) => (
+          <div className="report-day" key={summary.date}>
+            <span style={{ height: `${Math.max(8, (summary.totalCaloriesConsumed / trendMax) * 100)}%` }}></span>
+            <small>{formatShortDate(summary.date)}</small>
+          </div>
+        ))}
+      </div>
     </section>
   )
 }

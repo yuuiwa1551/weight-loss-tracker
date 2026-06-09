@@ -81,6 +81,29 @@ export interface RecentSummary {
   goalStatus: GoalStatus
 }
 
+export interface PeriodReport {
+  startDate: string
+  endDate: string
+  days: number
+  totalCaloriesConsumed: number
+  totalCaloriesBurned: number
+  netCalories: number
+  averageCaloriesConsumed: number
+  averageCaloriesBurned: number
+  averageNetCalories: number
+  averageProtein: number
+  averageFat: number
+  averageCarbohydrate: number
+  dailyCalorieGoal: number
+  daysUnderGoal: number
+  daysMeetGoal: number
+  daysOverGoal: number
+  startWeightKg: number | null
+  endWeightKg: number | null
+  weightChangeKg: number | null
+  dailySummaries: RecentSummary[]
+}
+
 export interface UpdateProfileRequest {
   nickname: string
   heightCm: number
@@ -166,6 +189,7 @@ export const api = {
       body: JSON.stringify(payload),
     }),
   deleteWeightRecord: (id: number) => request<null>(`/weight-records/${id}`, { method: 'DELETE' }),
+  getPeriodReport: (days: number) => request<PeriodReport>(`/reports/overview?days=${days}`),
   getDailySummary: (date?: string) => request<DailySummary>(`/summaries/daily${dateQuery(date)}`),
   getRecentSummaries: (days = 7) => request<RecentSummary[]>(`/summaries/recent?days=${days}`),
 }
