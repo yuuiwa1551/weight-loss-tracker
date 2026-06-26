@@ -44,6 +44,12 @@ H2 控制台：`http://localhost:8080/h2-console`
 - username：`sa`
 - password：空
 
+默认启动只会初始化一条用户目标资料，不会自动写入食物、运动或体重样例记录。需要演示样例数据时，可以临时启用：
+
+```powershell
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.arguments=--app.demo-data.sample-records-enabled=true"
+```
+
 ## 前端运行
 
 ```powershell

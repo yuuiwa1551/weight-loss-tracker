@@ -9,6 +9,7 @@ import com.example.weightloss.repository.ExerciseRecordRepository;
 import com.example.weightloss.repository.FoodRecordRepository;
 import com.example.weightloss.repository.UserProfileRepository;
 import com.example.weightloss.repository.WeightRecordRepository;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.stereotype.Component;
 
@@ -22,23 +23,30 @@ public class DemoDataInitializer implements CommandLineRunner {
 	private final FoodRecordRepository foodRecordRepository;
 	private final ExerciseRecordRepository exerciseRecordRepository;
 	private final WeightRecordRepository weightRecordRepository;
+	private final boolean sampleRecordsEnabled;
 
 	public DemoDataInitializer(
 		UserProfileRepository userProfileRepository,
 		FoodRecordRepository foodRecordRepository,
 		ExerciseRecordRepository exerciseRecordRepository,
-		WeightRecordRepository weightRecordRepository
+		WeightRecordRepository weightRecordRepository,
+		@Value("${app.demo-data.sample-records-enabled:false}") boolean sampleRecordsEnabled
 	) {
 		this.userProfileRepository = userProfileRepository;
 		this.foodRecordRepository = foodRecordRepository;
 		this.exerciseRecordRepository = exerciseRecordRepository;
 		this.weightRecordRepository = weightRecordRepository;
+		this.sampleRecordsEnabled = sampleRecordsEnabled;
 	}
 
 	@Override
 	public void run(String... args) {
 		UserProfile profile = userProfileRepository.findFirstByOrderByIdAsc()
 			.orElseGet(() -> userProfileRepository.save(defaultProfile()));
+
+		if (!sampleRecordsEnabled) {
+			return;
+		}
 
 		LocalDate today = LocalDate.now();
 		if (foodRecordRepository.countByRecordDate(today) == 0) {

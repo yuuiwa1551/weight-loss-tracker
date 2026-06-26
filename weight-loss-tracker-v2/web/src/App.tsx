@@ -251,7 +251,7 @@ function AppContent() {
       })
       setFoodForm(initialFoodForm(recordDate))
       setSelectedDate(recordDate)
-      await loadDashboard(recordDate)
+      await Promise.all([loadDashboard(recordDate), loadReports()])
       setNotice({ type: 'success', message: '食物记录已保存' })
     } catch (error) {
       setNotice({ type: 'error', message: getErrorMessage(error, '食物记录保存失败') })
@@ -276,7 +276,7 @@ function AppContent() {
       })
       setExerciseForm(initialExerciseForm(recordDate))
       setSelectedDate(recordDate)
-      await loadDashboard(recordDate)
+      await Promise.all([loadDashboard(recordDate), loadReports()])
       setNotice({ type: 'success', message: '运动记录已保存' })
     } catch (error) {
       setNotice({ type: 'error', message: getErrorMessage(error, '运动记录保存失败') })
@@ -300,7 +300,7 @@ function AppContent() {
       })
       setProfile(nextProfile)
       setProfileForm(profileToForm(nextProfile))
-      await loadDashboard(selectedDate)
+      await Promise.all([loadDashboard(selectedDate), loadReports()])
       setNotice({ type: 'success', message: '目标资料已更新' })
     } catch (error) {
       setNotice({ type: 'error', message: getErrorMessage(error, '目标资料更新失败') })
@@ -338,7 +338,7 @@ function AppContent() {
     setNotice(null)
     try {
       await api.deleteFoodRecord(id)
-      await loadDashboard(selectedDate)
+      await Promise.all([loadDashboard(selectedDate), loadReports()])
       setNotice({ type: 'success', message: '食物记录已删除' })
     } catch (error) {
       setNotice({ type: 'error', message: getErrorMessage(error, '删除失败') })
@@ -352,7 +352,7 @@ function AppContent() {
     setNotice(null)
     try {
       await api.deleteExerciseRecord(id)
-      await loadDashboard(selectedDate)
+      await Promise.all([loadDashboard(selectedDate), loadReports()])
       setNotice({ type: 'success', message: '运动记录已删除' })
     } catch (error) {
       setNotice({ type: 'error', message: getErrorMessage(error, '删除失败') })

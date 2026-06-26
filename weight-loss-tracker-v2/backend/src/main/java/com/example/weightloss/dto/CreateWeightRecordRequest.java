@@ -11,7 +11,7 @@ import java.time.LocalDate;
 
 public record CreateWeightRecordRequest(
 	@NotNull @PastOrPresent LocalDate recordDate,
-	@NotNull @DecimalMin("1.0") BigDecimal weightKg,
+	@NotNull @DecimalMin("1.0") @DecimalMax("500.0") BigDecimal weightKg,
 	@DecimalMin("0.0") @DecimalMax("100.0") BigDecimal bodyFatPercentage,
 	@Size(max = 500) String note
 ) {

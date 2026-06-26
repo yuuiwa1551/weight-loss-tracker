@@ -1,6 +1,8 @@
 package com.example.weightloss.dto;
 
 import com.example.weightloss.entity.MealType;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.PastOrPresent;
@@ -14,10 +16,10 @@ public record CreateFoodRecordRequest(
 	@NotNull @PastOrPresent LocalDate recordDate,
 	@NotNull MealType mealType,
 	@NotBlank @Size(max = 120) String foodName,
-	@NotNull @PositiveOrZero Integer calories,
-	@PositiveOrZero BigDecimal protein,
-	@PositiveOrZero BigDecimal fat,
-	@PositiveOrZero BigDecimal carbohydrate,
+	@NotNull @PositiveOrZero @Max(20000) Integer calories,
+	@PositiveOrZero @DecimalMax("1000.0") BigDecimal protein,
+	@PositiveOrZero @DecimalMax("1000.0") BigDecimal fat,
+	@PositiveOrZero @DecimalMax("1000.0") BigDecimal carbohydrate,
 	@Size(max = 500) String note
 ) {
 }

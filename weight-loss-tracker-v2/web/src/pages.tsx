@@ -24,9 +24,10 @@ export function DashboardPage({
     1,
     ...recentSummaries.flatMap((item) => [item.totalCaloriesConsumed, item.totalCaloriesBurned, item.dailyCalorieGoal]),
   )
-  const goalPercent = dailySummary
+  const rawGoalPercent = dailySummary
     ? Math.round((dailySummary.netCalories / Math.max(1, dailySummary.dailyCalorieGoal)) * 100)
     : 0
+  const goalPercent = Math.min(100, Math.max(0, rawGoalPercent))
 
   return (
     <section className="page-grid dashboard-grid">

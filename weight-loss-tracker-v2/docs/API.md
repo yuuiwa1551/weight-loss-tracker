@@ -67,6 +67,8 @@ Content-Type: application/json
 }
 ```
 
+数值范围：`heightCm` 为 `50.0` 到 `250.0`，`currentWeightKg` 和 `targetWeightKg` 为 `20.0` 到 `500.0`，`dailyCalorieGoal` 为 `500` 到 `10000`。
+
 ## Food Records
 
 ### 新增食物记录
@@ -92,6 +94,7 @@ Content-Type: application/json
 ```
 
 `mealType` 可选值：`BREAKFAST`、`LUNCH`、`DINNER`、`SNACK`。
+数值范围：`calories` 为 `0` 到 `20000`，`protein`、`fat`、`carbohydrate` 为 `0.0` 到 `1000.0`。
 
 ### 查询某日食物记录
 
@@ -129,6 +132,8 @@ Content-Type: application/json
 }
 ```
 
+数值范围：`durationMinutes` 为 `1` 到 `1440`，`caloriesBurned` 为 `0` 到 `10000`。
+
 ### 查询某日运动记录
 
 ```http
@@ -164,6 +169,7 @@ Content-Type: application/json
 ```
 
 `bodyFatPercentage` 和 `note` 可为空。
+数值范围：`weightKg` 为 `1.0` 到 `500.0`，`bodyFatPercentage` 为 `0.0` 到 `100.0`。
 
 ### 查询近期体重记录
 
@@ -171,7 +177,7 @@ Content-Type: application/json
 GET /api/weight-records/recent?days=30
 ```
 
-`days` 范围会被后端限制在 `7` 到 `365`，默认 `30`。
+`days` 范围是 `7` 到 `365`，默认 `30`。超出范围会返回 `400` 校验错误。
 
 响应 `data`：
 

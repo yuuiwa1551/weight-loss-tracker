@@ -20,6 +20,8 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 public class SummaryService {
@@ -57,13 +59,15 @@ public class SummaryService {
 		UserProfile profile = profileService.getProfileEntity();
 		List<FoodRecord> foodRecords = foodRecordRepository.findByRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(startDate, endDate);
 		List<ExerciseRecord> exerciseRecords = exerciseRecordRepository.findByRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(startDate, endDate);
+		Map<LocalDate, List<FoodRecord>> foodRecordsByDate = groupFoodRecordsByDate(foodRecords);
+		Map<LocalDate, List<ExerciseRecord>> exerciseRecordsByDate = groupExerciseRecordsByDate(exerciseRecords);
 
 		return startDate.datesUntil(endDate.plusDays(1))
 			.map(date -> buildDailySummary(
 				date,
 				profile.getDailyCalorieGoal(),
-				foodRecords.stream().filter(record -> record.getRecordDate().equals(date)).toList(),
-				exerciseRecords.stream().filter(record -> record.getRecordDate().equals(date)).toList()
+				foodRecordsByDate.getOrDefault(date, List.of()),
+				exerciseRecordsByDate.getOrDefault(date, List.of())
 			))
 			.map(RecentSummaryResponse::fromDaily)
 			.toList();
@@ -77,13 +81,15 @@ public class SummaryService {
 		List<FoodRecord> foodRecords = foodRecordRepository.findByRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(startDate, endDate);
 		List<ExerciseRecord> exerciseRecords = exerciseRecordRepository.findByRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(startDate, endDate);
 		List<WeightRecord> weightRecords = weightRecordRepository.findByRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(startDate, endDate);
+		Map<LocalDate, List<FoodRecord>> foodRecordsByDate = groupFoodRecordsByDate(foodRecords);
+		Map<LocalDate, List<ExerciseRecord>> exerciseRecordsByDate = groupExerciseRecordsByDate(exerciseRecords);
 
 		List<DailySummaryResponse> dailySummaries = startDate.datesUntil(endDate.plusDays(1))
 			.map(date -> buildDailySummary(
 				date,
 				profile.getDailyCalorieGoal(),
-				foodRecords.stream().filter(record -> record.getRecordDate().equals(date)).toList(),
-				exerciseRecords.stream().filter(record -> record.getRecordDate().equals(date)).toList()
+				foodRecordsByDate.getOrDefault(date, List.of()),
+				exerciseRecordsByDate.getOrDefault(date, List.of())
 			))
 			.toList();
 
@@ -165,5 +171,13 @@ public class SummaryService {
 
 	private BigDecimal average(BigDecimal value, int days) {
 		return value.divide(BigDecimal.valueOf(days), 1, RoundingMode.HALF_UP);
+	}
+
+	private Map<LocalDate, List<FoodRecord>> groupFoodRecordsByDate(List<FoodRecord> records) {
+		return records.stream().collect(Collectors.groupingBy(FoodRecord::getRecordDate));
+	}
+
+	private Map<LocalDate, List<ExerciseRecord>> groupExerciseRecordsByDate(List<ExerciseRecord> records) {
+		return records.stream().collect(Collectors.groupingBy(ExerciseRecord::getRecordDate));
 	}
 }

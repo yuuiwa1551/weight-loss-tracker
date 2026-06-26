@@ -9,6 +9,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -80,6 +81,43 @@ class WeightLossTrackerBackendApplicationTests {
 	}
 
 	@Test
+	void rejectsUnrealisticFoodCalories() throws Exception {
+		String foodJson = """
+			{
+			  "recordDate": "2026-06-08",
+			  "mealType": "DINNER",
+			  "foodName": "Impossible feast",
+			  "calories": 25000
+			}
+			""";
+
+		mockMvc.perform(post("/api/food-records")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(foodJson))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false));
+	}
+
+	@Test
+	void rejectsUnrealisticProfileValues() throws Exception {
+		String profileJson = """
+			{
+			  "nickname": "Demo User",
+			  "heightCm": 30.0,
+			  "currentWeightKg": 75.0,
+			  "targetWeightKg": 68.0,
+			  "dailyCalorieGoal": 20000
+			}
+			""";
+
+		mockMvc.perform(put("/api/profile")
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(profileJson))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false));
+	}
+
+	@Test
 	void canCreateAndListWeightRecords() throws Exception {
 		String weightJson = """
 			{
@@ -101,6 +139,13 @@ class WeightLossTrackerBackendApplicationTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.success").value(true))
 			.andExpect(jsonPath("$.data").isArray());
+	}
+
+	@Test
+	void recentWeightRecordsRejectOutOfRangeDays() throws Exception {
+		mockMvc.perform(get("/api/weight-records/recent?days=3"))
+			.andExpect(status().isBadRequest())
+			.andExpect(jsonPath("$.success").value(false));
 	}
 
 	@Test

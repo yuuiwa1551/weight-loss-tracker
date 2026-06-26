@@ -32,9 +32,8 @@ public class WeightRecordService {
 
 	@Transactional(readOnly = true)
 	public List<WeightRecordResponse> listRecent(int days) {
-		int normalizedDays = Math.max(7, Math.min(days, 365));
 		LocalDate endDate = LocalDate.now();
-		LocalDate startDate = endDate.minusDays(normalizedDays - 1L);
+		LocalDate startDate = endDate.minusDays(days - 1L);
 		return weightRecordRepository.findByRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(startDate, endDate).stream()
 			.map(WeightRecordResponse::from)
 			.toList();
