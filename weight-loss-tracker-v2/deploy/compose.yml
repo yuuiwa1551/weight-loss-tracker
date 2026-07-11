@@ -1,0 +1,25 @@
+services:
+  weight-loss-tracker:
+    build:
+      context: ..
+      dockerfile: Dockerfile
+    image: weight-loss-tracker-v2:local
+    container_name: weight-loss-tracker
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      DB_URL: ${DB_URL:-}
+      DB_USERNAME: ${DB_USERNAME:-}
+      DB_PASSWORD: ${DB_PASSWORD:-}
+    ports:
+      - "127.0.0.1:8080:8080"
+    volumes:
+      - ../runtime-data/h2:/app/data
+    networks:
+      - astrbot_network
+
+networks:
+  astrbot_network:
+    external: true
+    name: astrbot_astrbot_network

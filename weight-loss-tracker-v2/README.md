@@ -4,11 +4,12 @@
 
 ## 当前阶段
 
-Phase 5 正在实施：后端已支持按用户隔离资料、食物、运动、体重、汇总和报表，本地 Web 已增加用户选择器并支持资料渐进完善。AstrBot 插件和 Docker 常驻部署仍在后续阶段。前端继续通过真实 API 展示仪表盘、记录、体重趋势、周期报表和目标资料。
+Phase 5 已进入部署验证：后端和 Web 已支持 QQ 多用户隔离，AstrBot 插件已实现记录、查询、估算确认和撤销工具。本地 Docker 服务将 Web、API 和 H2 持久化合并部署，并加入现有 AstrBot 网络。
 
 - 产品规格：[docs/SPEC.md](docs/SPEC.md)
 - 开发计划：[docs/PLAN.md](docs/PLAN.md)
 - API 契约：[docs/API.md](docs/API.md)
+- 本地部署：[docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)
 
 ## 建议技术方向
 
@@ -61,6 +62,14 @@ npm run dev
 ```
 
 前端默认运行在 `http://127.0.0.1:5173/`，开发模式下 `/api` 会代理到 `http://localhost:8080`。
+
+## Docker 常驻运行
+
+```powershell
+docker compose -f deploy/compose.yml up -d --build
+```
+
+Web 和 API 统一位于 `http://127.0.0.1:8080`。H2 文件保存在 Git 忽略的 `runtime-data/h2`，AstrBot 插件通过 `http://weight-loss-tracker:8080` 访问后端。备份与可选 MySQL 配置见 [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md)。
 
 ## 已验证
 

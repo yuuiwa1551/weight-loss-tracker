@@ -37,6 +37,13 @@ class WeightLossTrackerBackendApplicationTests {
 	}
 
 	@Test
+	void exposesHealthEndpoint() throws Exception {
+		mockMvc.perform(get("/actuator/health"))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.status").value("UP"));
+	}
+
+	@Test
 	void resolvesQqUserIdempotentlyAndRefreshesDisplayName() throws Exception {
 		long firstId = resolveUser("1154824108", "First name");
 		long secondId = resolveUser("1154824108", "Updated name");
