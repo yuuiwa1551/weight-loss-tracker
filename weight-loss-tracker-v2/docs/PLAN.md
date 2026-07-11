@@ -127,11 +127,11 @@ weight-loss-tracker-v2/
 
 ## 下一轮建议动作
 
-Phase 5 已确定为当前实施方向，详见 [PHASE_5_ASTRBOT.md](PHASE_5_ASTRBOT.md)。
+Phase 5 已完成，实施结果和边界详见 [PHASE_5_ASTRBOT.md](PHASE_5_ASTRBOT.md)。
 
 ## 阶段 5：本地多用户与 AstrBot 接入
 
-状态：实施中。
+状态：已完成。
 
 目标：不引入传统登录注册和公网服务，在本机完成基于 QQ 身份的数据隔离，并让 AstrBot 通过 LLM tools 记录、查询和纠正减重数据。
 
@@ -154,6 +154,16 @@ Phase 5 已确定为当前实施方向，详见 [PHASE_5_ASTRBOT.md](PHASE_5_AST
 3. AstrBot LLM tools 插件、确认/取消/撤销流程和插件测试
 4. Docker 构建、H2 持久化、备份脚本和可选 MySQL 配置
 5. 全量验证、分阶段提交推送和真实 AstrBot 运行联调
+
+验收结果：
+
+- 后端 16 项测试通过
+- 前端 lint、3 项测试和生产构建通过
+- 插件 9 项测试及 AstrBot 镜像导入检查通过
+- Docker 健康检查、SPA 路由、H2 重启持久化和备份恢复启动通过
+- AstrBot 运行副本加载 v0.1.0，注册 10 个 LLM tools
+- `aiocqhttp` QQ 事件身份解析和后端资料查询 smoke test 通过
+- GitHub 推送等待本机 `gh` 重新登录，不影响本地运行版本
 
 完成标准：
 

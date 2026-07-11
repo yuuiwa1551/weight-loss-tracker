@@ -4,7 +4,7 @@
 
 ## 当前阶段
 
-Phase 5 已进入部署验证：后端和 Web 已支持 QQ 多用户隔离，AstrBot 插件已实现记录、查询、估算确认和撤销工具。本地 Docker 服务将 Web、API 和 H2 持久化合并部署，并加入现有 AstrBot 网络。
+Phase 5 已完成：后端和 Web 支持 QQ 多用户隔离，AstrBot 插件已部署记录、查询、估算确认和撤销工具。本地 Docker 服务将 Web、API 和 H2 持久化合并部署，并已加入现有 AstrBot 网络。
 
 - 产品规格：[docs/SPEC.md](docs/SPEC.md)
 - 开发计划：[docs/PLAN.md](docs/PLAN.md)
@@ -16,7 +16,7 @@ Phase 5 已进入部署验证：后端和 Web 已支持 QQ 多用户隔离，Ast
 - 后端：Spring Boot 4 + Java 17 target，已在本机 Java 21 环境验证
 - 前端：React + Vite + TypeScript + React Router
 - 数据库：H2 文件数据库，接口稳定后再考虑切 MySQL
-- 架构：本机多用户数据服务，不建设传统登录页面；后续由 AstrBot LLM tools 提供聊天入口
+- 架构：本机多用户数据服务，不建设传统登录页面；由 AstrBot LLM tools 提供聊天入口
 
 ## 当前功能
 

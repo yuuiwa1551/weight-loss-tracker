@@ -1,5 +1,7 @@
 # Phase 5：本地多用户与 AstrBot 接入
 
+状态：已完成并部署到本机运行环境。GitHub 推送等待本机 `gh` 重新登录。
+
 ## 1. 目标与边界
 
 本阶段把 V2 从单用户 Web demo 扩展为本机运行的多用户减重数据服务，并通过 AstrBot 聊天完成自然语言录入和查询。
@@ -277,3 +279,13 @@ integrations/astrbot_plugin_weight_loss_tracker/
 4. 仅推送 V2 源码、文档和插件发布内容
 5. 不提交 AstrBot 数据、日志、数据库、密钥、缓存或运行时临时文件
 6. 插件源码与 `D:\astrbot\data\plugins` 运行副本分开维护
+
+## 11. 实施验收
+
+- V2 容器：`weight-loss-tracker`，加入 `astrbot_astrbot_network`
+- 宿主入口：`http://127.0.0.1:8080`
+- AstrBot 内部入口：`http://weight-loss-tracker:8080`
+- H2 数据：仓库内 Git 忽略目录 `runtime-data/h2`
+- 插件运行副本：`D:\astrbot\data\plugins\astrbot_plugin_weight_loss_tracker`
+- 自动测试：后端 16 项、前端 3 项、插件 9 项全部通过
+- 运行验证：健康检查、SPA 路由、H2 重启持久化、备份脚本、插件加载和 QQ 身份 API smoke test 均通过
