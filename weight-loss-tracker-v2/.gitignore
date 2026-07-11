@@ -1,0 +1,33 @@
+# Java / Maven
+backend/target/
+*.class
+
+# Node / Vite
+web/node_modules/
+web/dist/
+web/coverage/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+
+# Local runtime data
+runtime-data/
+data/
+backups/
+*.mv.db
+*.trace.db
+*.lock.db
+
+# Local configuration and secrets
+.env
+.env.*
+!.env.example
+
+# Editors and operating systems
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
