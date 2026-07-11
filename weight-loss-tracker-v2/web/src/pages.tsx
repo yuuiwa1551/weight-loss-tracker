@@ -5,6 +5,13 @@ import { goalLabels, mealLabels } from './constants'
 import type { ExerciseFormState, FoodFormState, ProfileFormState, WeightFormState } from './types'
 import { formatShortDate } from './utils'
 
+const profileFieldLabels: Record<string, string> = {
+  heightCm: '身高',
+  currentWeightKg: '当前体重',
+  targetWeightKg: '目标体重',
+  dailyCalorieGoal: '每日热量目标',
+}
+
 export function DashboardPage({
   dailySummary,
   recentSummaries,
@@ -22,10 +29,10 @@ export function DashboardPage({
 }) {
   const trendMax = Math.max(
     1,
-    ...recentSummaries.flatMap((item) => [item.totalCaloriesConsumed, item.totalCaloriesBurned, item.dailyCalorieGoal]),
+    ...recentSummaries.flatMap((item) => [item.totalCaloriesConsumed, item.totalCaloriesBurned, item.dailyCalorieGoal ?? 0]),
   )
-  const rawGoalPercent = dailySummary
-    ? Math.round((dailySummary.netCalories / Math.max(1, dailySummary.dailyCalorieGoal)) * 100)
+  const rawGoalPercent = dailySummary?.dailyCalorieGoal
+    ? Math.round((dailySummary.netCalories / dailySummary.dailyCalorieGoal) * 100)
     : 0
   const goalPercent = Math.min(100, Math.max(0, rawGoalPercent))
 
@@ -43,7 +50,9 @@ export function DashboardPage({
           <p className="eyebrow">目标状态</p>
           <h3>{dailySummary ? goalLabels[dailySummary.goalStatus] : '等待数据'}</h3>
         </div>
-        <div className={`goal-ring ${dailySummary?.goalStatus.toLowerCase() || 'under'}`}>{goalPercent}%</div>
+        <div className={`goal-ring ${dailySummary?.goalStatus.toLowerCase() || 'unset'}`}>
+          {dailySummary?.dailyCalorieGoal == null ? '—' : `${goalPercent}%`}
+        </div>
         <div className="macro-row">
           <span>蛋白质 {dailySummary?.totalProtein ?? 0}g</span>
           <span>脂肪 {dailySummary?.totalFat ?? 0}g</span>
@@ -198,9 +207,14 @@ export function WeightRecordPage({
   const latestWeight = weightRecords.at(-1)?.weightKg
   const firstWeight = weightRecords[0]?.weightKg
   const weightChange = latestWeight !== undefined && firstWeight !== undefined ? Number((latestWeight - firstWeight).toFixed(1)) : undefined
-  const targetGap = latestWeight !== undefined && profile ? Number((latestWeight - profile.targetWeightKg).toFixed(1)) : undefined
-  const minWeight = Math.min(...weightRecords.map((record) => record.weightKg), profile?.targetWeightKg ?? Number.POSITIVE_INFINITY)
-  const maxWeight = Math.max(...weightRecords.map((record) => record.weightKg), profile?.currentWeightKg ?? 0)
+  const targetGap = latestWeight !== undefined && profile?.targetWeightKg != null
+    ? Number((latestWeight - profile.targetWeightKg).toFixed(1))
+    : undefined
+  const weightValues = weightRecords.map((record) => record.weightKg)
+  if (profile?.targetWeightKg != null) weightValues.push(profile.targetWeightKg)
+  if (profile?.currentWeightKg != null) weightValues.push(profile.currentWeightKg)
+  const minWeight = weightValues.length > 0 ? Math.min(...weightValues) : 0
+  const maxWeight = weightValues.length > 0 ? Math.max(...weightValues) : 0
   const weightRange = Math.max(1, maxWeight - minWeight)
 
   return (
@@ -355,6 +369,11 @@ export function ProfilePage({
       <section className="panel profile-summary">
         <p className="eyebrow">Health</p>
         <h3>{profile?.nickname || '未加载'}</h3>
+        {profile && !profile.profileComplete && (
+          <div className="profile-warning">
+            还需补充：{profile.missingFields.map((field) => profileFieldLabels[field] || field).join('、')}
+          </div>
+        )}
         <div className="profile-metrics">
           <MetricCard label="BMI" value={profile?.bmi} suffix="" tone="ink" />
           <MetricCard label="待减重" value={profile?.weightToLoseKg} suffix="kg" tone="teal" />

@@ -1,5 +1,7 @@
 export type MealType = 'BREAKFAST' | 'LUNCH' | 'DINNER' | 'SNACK'
-export type GoalStatus = 'UNDER' | 'MEET' | 'OVER'
+export type GoalStatus = 'UNSET' | 'UNDER' | 'MEET' | 'OVER'
+export type RecordSource = 'WEB' | 'ASTRBOT'
+export type NutritionSource = 'USER_PROVIDED' | 'LLM_ESTIMATE'
 
 export interface ApiResponse<T> {
   success: boolean
@@ -7,15 +9,26 @@ export interface ApiResponse<T> {
   data: T
 }
 
+export interface AppUser {
+  id: number
+  platform: string
+  username: string
+  displayName: string | null
+  createdAt: string
+  updatedAt: string
+}
+
 export interface UserProfile {
   id: number
-  nickname: string
-  heightCm: number
-  currentWeightKg: number
-  targetWeightKg: number
-  dailyCalorieGoal: number
-  bmi: number
-  weightToLoseKg: number
+  nickname: string | null
+  heightCm: number | null
+  currentWeightKg: number | null
+  targetWeightKg: number | null
+  dailyCalorieGoal: number | null
+  bmi: number | null
+  weightToLoseKg: number | null
+  profileComplete: boolean
+  missingFields: string[]
   createdAt: string
   updatedAt: string
 }
@@ -30,6 +43,10 @@ export interface FoodRecord {
   fat: number
   carbohydrate: number
   note: string | null
+  source: RecordSource
+  clientRequestId: string | null
+  nutritionSource: NutritionSource
+  estimationNote: string | null
   createdAt: string
   updatedAt: string
 }
@@ -42,6 +59,8 @@ export interface ExerciseRecord {
   durationMinutes: number
   caloriesBurned: number
   note: string | null
+  source: RecordSource
+  clientRequestId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -52,6 +71,8 @@ export interface WeightRecord {
   weightKg: number
   bodyFatPercentage: number | null
   note: string | null
+  source: RecordSource
+  clientRequestId: string | null
   createdAt: string
   updatedAt: string
 }
@@ -61,8 +82,8 @@ export interface DailySummary {
   totalCaloriesConsumed: number
   totalCaloriesBurned: number
   netCalories: number
-  dailyCalorieGoal: number
-  calorieDifference: number
+  dailyCalorieGoal: number | null
+  calorieDifference: number | null
   goalStatus: GoalStatus
   totalProtein: number
   totalFat: number
@@ -76,8 +97,8 @@ export interface RecentSummary {
   totalCaloriesConsumed: number
   totalCaloriesBurned: number
   netCalories: number
-  dailyCalorieGoal: number
-  calorieDifference: number
+  dailyCalorieGoal: number | null
+  calorieDifference: number | null
   goalStatus: GoalStatus
 }
 
@@ -94,7 +115,7 @@ export interface PeriodReport {
   averageProtein: number
   averageFat: number
   averageCarbohydrate: number
-  dailyCalorieGoal: number
+  dailyCalorieGoal: number | null
   daysUnderGoal: number
   daysMeetGoal: number
   daysOverGoal: number
@@ -105,11 +126,11 @@ export interface PeriodReport {
 }
 
 export interface UpdateProfileRequest {
-  nickname: string
-  heightCm: number
-  currentWeightKg: number
-  targetWeightKg: number
-  dailyCalorieGoal: number
+  nickname: string | null
+  heightCm: number | null
+  currentWeightKg: number | null
+  targetWeightKg: number | null
+  dailyCalorieGoal: number | null
 }
 
 export interface CreateFoodRecordRequest {
@@ -163,33 +184,38 @@ function dateQuery(date?: string) {
   return date ? `?date=${encodeURIComponent(date)}` : ''
 }
 
+function userPath(userId: number, path: string) {
+  return `/users/${userId}${path}`
+}
+
 export const api = {
-  getProfile: () => request<UserProfile>('/profile'),
-  updateProfile: (payload: UpdateProfileRequest) =>
-    request<UserProfile>('/profile', {
+  getUsers: () => request<AppUser[]>('/users'),
+  getProfile: (userId: number) => request<UserProfile>(userPath(userId, '/profile')),
+  updateProfile: (userId: number, payload: UpdateProfileRequest) =>
+    request<UserProfile>(userPath(userId, '/profile'), {
       method: 'PUT',
       body: JSON.stringify(payload),
     }),
-  createFoodRecord: (payload: CreateFoodRecordRequest) =>
-    request<FoodRecord>('/food-records', {
+  createFoodRecord: (userId: number, payload: CreateFoodRecordRequest) =>
+    request<FoodRecord>(userPath(userId, '/food-records'), {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  deleteFoodRecord: (id: number) => request<null>(`/food-records/${id}`, { method: 'DELETE' }),
-  createExerciseRecord: (payload: CreateExerciseRecordRequest) =>
-    request<ExerciseRecord>('/exercise-records', {
+  deleteFoodRecord: (userId: number, id: number) => request<null>(userPath(userId, `/food-records/${id}`), { method: 'DELETE' }),
+  createExerciseRecord: (userId: number, payload: CreateExerciseRecordRequest) =>
+    request<ExerciseRecord>(userPath(userId, '/exercise-records'), {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  deleteExerciseRecord: (id: number) => request<null>(`/exercise-records/${id}`, { method: 'DELETE' }),
-  getRecentWeightRecords: (days = 30) => request<WeightRecord[]>(`/weight-records/recent?days=${days}`),
-  createWeightRecord: (payload: CreateWeightRecordRequest) =>
-    request<WeightRecord>('/weight-records', {
+  deleteExerciseRecord: (userId: number, id: number) => request<null>(userPath(userId, `/exercise-records/${id}`), { method: 'DELETE' }),
+  getRecentWeightRecords: (userId: number, days = 30) => request<WeightRecord[]>(userPath(userId, `/weight-records/recent?days=${days}`)),
+  createWeightRecord: (userId: number, payload: CreateWeightRecordRequest) =>
+    request<WeightRecord>(userPath(userId, '/weight-records'), {
       method: 'POST',
       body: JSON.stringify(payload),
     }),
-  deleteWeightRecord: (id: number) => request<null>(`/weight-records/${id}`, { method: 'DELETE' }),
-  getPeriodReport: (days: number) => request<PeriodReport>(`/reports/overview?days=${days}`),
-  getDailySummary: (date?: string) => request<DailySummary>(`/summaries/daily${dateQuery(date)}`),
-  getRecentSummaries: (days = 7) => request<RecentSummary[]>(`/summaries/recent?days=${days}`),
+  deleteWeightRecord: (userId: number, id: number) => request<null>(userPath(userId, `/weight-records/${id}`), { method: 'DELETE' }),
+  getPeriodReport: (userId: number, days: number) => request<PeriodReport>(userPath(userId, `/reports/overview?days=${days}`)),
+  getDailySummary: (userId: number, date?: string) => request<DailySummary>(userPath(userId, `/summaries/daily${dateQuery(date)}`)),
+  getRecentSummaries: (userId: number, days = 7) => request<RecentSummary[]>(userPath(userId, `/summaries/recent?days=${days}`)),
 }

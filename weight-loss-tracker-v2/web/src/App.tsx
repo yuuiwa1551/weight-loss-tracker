@@ -1,12 +1,22 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
-import { api, type DailySummary, type PeriodReport, type RecentSummary, type UserProfile, type WeightRecord } from './api'
+import {
+  api,
+  type AppUser,
+  type DailySummary,
+  type PeriodReport,
+  type RecentSummary,
+  type UserProfile,
+  type WeightRecord,
+} from './api'
 import { AppShell } from './components'
 import { DashboardPage, ExerciseRecordPage, FoodRecordPage, ProfilePage, ReportsPage, WeightRecordPage } from './pages'
 import { getPageByPath, pages } from './routes'
 import type { ExerciseFormState, FoodFormState, Notice, ProfileFormState, WeightFormState } from './types'
-import { getErrorMessage, today } from './utils'
+import { getErrorMessage, selectInitialUserId, today } from './utils'
 import './App.css'
+
+const SELECTED_USER_KEY = 'weight-loss-tracker:selected-user-id'
 
 function initialFoodForm(date: string): FoodFormState {
   return {
@@ -43,11 +53,11 @@ function initialWeightForm(date: string): WeightFormState {
 
 function profileToForm(profile: UserProfile): ProfileFormState {
   return {
-    nickname: profile.nickname,
-    heightCm: String(profile.heightCm),
-    currentWeightKg: String(profile.currentWeightKg),
-    targetWeightKg: String(profile.targetWeightKg),
-    dailyCalorieGoal: String(profile.dailyCalorieGoal),
+    nickname: profile.nickname ?? '',
+    heightCm: profile.heightCm == null ? '' : String(profile.heightCm),
+    currentWeightKg: profile.currentWeightKg == null ? '' : String(profile.currentWeightKg),
+    targetWeightKg: profile.targetWeightKg == null ? '' : String(profile.targetWeightKg),
+    dailyCalorieGoal: profile.dailyCalorieGoal == null ? '' : String(profile.dailyCalorieGoal),
   }
 }
 
@@ -55,7 +65,11 @@ function toNumber(value: string) {
   return Number(value || 0)
 }
 
-function optionalNote(value: string) {
+function optionalNumber(value: string) {
+  return value.trim() === '' ? null : Number(value)
+}
+
+function optionalText(value: string) {
   const trimmed = value.trim()
   return trimmed.length > 0 ? trimmed : null
 }
@@ -63,6 +77,9 @@ function optionalNote(value: string) {
 function AppContent() {
   const location = useLocation()
   const activePage = getPageByPath(location.pathname) ?? pages[0]
+  const [users, setUsers] = useState<AppUser[]>([])
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null)
+  const selectedUserIdRef = useRef<number | null>(null)
   const [selectedDate, setSelectedDate] = useState(today())
   const [dailySummary, setDailySummary] = useState<DailySummary | null>(null)
   const [recentSummaries, setRecentSummaries] = useState<RecentSummary[]>([])
@@ -74,172 +91,247 @@ function AppContent() {
   const [exerciseForm, setExerciseForm] = useState<ExerciseFormState>(() => initialExerciseForm(selectedDate))
   const [weightForm, setWeightForm] = useState<WeightFormState>(() => initialWeightForm(selectedDate))
   const [profileForm, setProfileForm] = useState<ProfileFormState | null>(null)
-  const [loadingDashboard, setLoadingDashboard] = useState(true)
-  const [loadingWeightRecords, setLoadingWeightRecords] = useState(true)
-  const [loadingReports, setLoadingReports] = useState(true)
-  const [loadingProfile, setLoadingProfile] = useState(true)
+  const [loadingUsers, setLoadingUsers] = useState(true)
+  const [loadingDashboard, setLoadingDashboard] = useState(false)
+  const [loadingWeightRecords, setLoadingWeightRecords] = useState(false)
+  const [loadingReports, setLoadingReports] = useState(false)
+  const [loadingProfile, setLoadingProfile] = useState(false)
   const [saving, setSaving] = useState(false)
   const [notice, setNotice] = useState<Notice | null>(null)
 
-  async function loadDashboard(date = selectedDate) {
+  useEffect(() => {
+    selectedUserIdRef.current = selectedUserId
+  }, [selectedUserId])
+
+  async function loadDashboard(userId: number, date = selectedDate) {
     setLoadingDashboard(true)
     try {
-      const [daily, recent] = await Promise.all([api.getDailySummary(date), api.getRecentSummaries(7)])
+      const [daily, recent] = await Promise.all([api.getDailySummary(userId, date), api.getRecentSummaries(userId, 7)])
+      if (selectedUserIdRef.current !== userId) return
       setDailySummary(daily)
       setRecentSummaries(recent)
     } catch (error) {
+      if (selectedUserIdRef.current !== userId) return
       setDailySummary(null)
       setRecentSummaries([])
       setNotice({ type: 'error', message: getErrorMessage(error, '仪表盘加载失败') })
     } finally {
-      setLoadingDashboard(false)
+      if (selectedUserIdRef.current === userId) setLoadingDashboard(false)
     }
   }
 
-  async function loadWeightRecords() {
+  async function loadWeightRecords(userId: number) {
     setLoadingWeightRecords(true)
     try {
-      setWeightRecords(await api.getRecentWeightRecords(30))
+      const records = await api.getRecentWeightRecords(userId, 30)
+      if (selectedUserIdRef.current !== userId) return
+      setWeightRecords(records)
     } catch (error) {
+      if (selectedUserIdRef.current !== userId) return
       setWeightRecords([])
       setNotice({ type: 'error', message: getErrorMessage(error, '体重记录加载失败') })
     } finally {
-      setLoadingWeightRecords(false)
+      if (selectedUserIdRef.current === userId) setLoadingWeightRecords(false)
     }
   }
 
-  async function loadReports() {
+  async function loadReports(userId: number) {
     setLoadingReports(true)
     try {
-      const [weekly, monthly] = await Promise.all([api.getPeriodReport(7), api.getPeriodReport(30)])
+      const [weekly, monthly] = await Promise.all([api.getPeriodReport(userId, 7), api.getPeriodReport(userId, 30)])
+      if (selectedUserIdRef.current !== userId) return
       setWeeklyReport(weekly)
       setMonthlyReport(monthly)
     } catch (error) {
+      if (selectedUserIdRef.current !== userId) return
       setWeeklyReport(null)
       setMonthlyReport(null)
       setNotice({ type: 'error', message: getErrorMessage(error, '周期报表加载失败') })
     } finally {
-      setLoadingReports(false)
+      if (selectedUserIdRef.current === userId) setLoadingReports(false)
+    }
+  }
+
+  async function loadProfile(userId: number) {
+    setLoadingProfile(true)
+    try {
+      const nextProfile = await api.getProfile(userId)
+      if (selectedUserIdRef.current !== userId) return
+      setProfile(nextProfile)
+      setProfileForm(profileToForm(nextProfile))
+    } catch (error) {
+      if (selectedUserIdRef.current !== userId) return
+      setProfile(null)
+      setProfileForm(null)
+      setNotice({ type: 'error', message: getErrorMessage(error, '资料加载失败') })
+    } finally {
+      if (selectedUserIdRef.current === userId) setLoadingProfile(false)
     }
   }
 
   function handleSelectedDateChange(nextDate: string) {
-    setLoadingDashboard(true)
+    if (selectedUserId !== null) setLoadingDashboard(true)
     setSelectedDate(nextDate)
     setFoodForm((currentForm) => ({ ...currentForm, recordDate: nextDate }))
     setExerciseForm((currentForm) => ({ ...currentForm, recordDate: nextDate }))
     setWeightForm((currentForm) => ({ ...currentForm, recordDate: nextDate }))
   }
 
+  function handleSelectedUserChange(userId: number) {
+    if (!users.some((user) => user.id === userId)) return
+    localStorage.setItem(SELECTED_USER_KEY, String(userId))
+    setNotice(null)
+    setDailySummary(null)
+    setRecentSummaries([])
+    setWeightRecords([])
+    setWeeklyReport(null)
+    setMonthlyReport(null)
+    setProfile(null)
+    setProfileForm(null)
+    setLoadingDashboard(true)
+    setLoadingWeightRecords(true)
+    setLoadingReports(true)
+    setLoadingProfile(true)
+    setSelectedUserId(userId)
+  }
+
   useEffect(() => {
     let ignore = false
 
     async function load() {
       try {
-        const [daily, recent] = await Promise.all([api.getDailySummary(selectedDate), api.getRecentSummaries(7)])
+        const nextUsers = await api.getUsers()
+        if (ignore) return
+        const nextUserId = selectInitialUserId(nextUsers, localStorage.getItem(SELECTED_USER_KEY))
+        setUsers(nextUsers)
+        setLoadingDashboard(nextUserId !== null)
+        setLoadingWeightRecords(nextUserId !== null)
+        setLoadingReports(nextUserId !== null)
+        setLoadingProfile(nextUserId !== null)
+        setSelectedUserId(nextUserId)
+        if (nextUserId !== null) localStorage.setItem(SELECTED_USER_KEY, String(nextUserId))
+      } catch (error) {
+        if (ignore) return
+        setUsers([])
+        setSelectedUserId(null)
+        setNotice({ type: 'error', message: getErrorMessage(error, '用户列表加载失败') })
+      } finally {
+        if (!ignore) setLoadingUsers(false)
+      }
+    }
+
+    void load()
+    return () => {
+      ignore = true
+    }
+  }, [])
+
+  useEffect(() => {
+    let ignore = false
+    if (selectedUserId === null) return
+
+    Promise.all([api.getDailySummary(selectedUserId, selectedDate), api.getRecentSummaries(selectedUserId, 7)])
+      .then(([daily, recent]) => {
         if (ignore) return
         setDailySummary(daily)
         setRecentSummaries(recent)
-      } catch (error) {
+      })
+      .catch((error: unknown) => {
         if (ignore) return
         setDailySummary(null)
         setRecentSummaries([])
         setNotice({ type: 'error', message: getErrorMessage(error, '仪表盘加载失败') })
-      } finally {
+      })
+      .finally(() => {
         if (!ignore) setLoadingDashboard(false)
-      }
-    }
-
-    void load()
+      })
 
     return () => {
       ignore = true
     }
-  }, [selectedDate])
+  }, [selectedDate, selectedUserId])
 
   useEffect(() => {
     let ignore = false
+    if (selectedUserId === null) return
 
-    async function load() {
-      try {
-        const nextProfile = await api.getProfile()
+    api.getProfile(selectedUserId)
+      .then((nextProfile) => {
         if (ignore) return
         setProfile(nextProfile)
         setProfileForm(profileToForm(nextProfile))
-      } catch (error) {
+      })
+      .catch((error: unknown) => {
         if (ignore) return
         setProfile(null)
         setProfileForm(null)
         setNotice({ type: 'error', message: getErrorMessage(error, '资料加载失败') })
-      } finally {
+      })
+      .finally(() => {
         if (!ignore) setLoadingProfile(false)
-      }
-    }
-
-    void load()
+      })
 
     return () => {
       ignore = true
     }
-  }, [])
+  }, [selectedUserId])
 
   useEffect(() => {
     let ignore = false
+    if (selectedUserId === null) return
 
-    async function load() {
-      try {
-        const [weekly, monthly] = await Promise.all([api.getPeriodReport(7), api.getPeriodReport(30)])
+    Promise.all([api.getPeriodReport(selectedUserId, 7), api.getPeriodReport(selectedUserId, 30)])
+      .then(([weekly, monthly]) => {
         if (ignore) return
         setWeeklyReport(weekly)
         setMonthlyReport(monthly)
-      } catch (error) {
+      })
+      .catch((error: unknown) => {
         if (ignore) return
         setWeeklyReport(null)
         setMonthlyReport(null)
         setNotice({ type: 'error', message: getErrorMessage(error, '周期报表加载失败') })
-      } finally {
+      })
+      .finally(() => {
         if (!ignore) setLoadingReports(false)
-      }
-    }
-
-    void load()
+      })
 
     return () => {
       ignore = true
     }
-  }, [])
+  }, [selectedUserId])
 
   useEffect(() => {
     let ignore = false
+    if (selectedUserId === null) return
 
-    async function load() {
-      try {
-        const records = await api.getRecentWeightRecords(30)
-        if (ignore) return
-        setWeightRecords(records)
-      } catch (error) {
+    api.getRecentWeightRecords(selectedUserId, 30)
+      .then((records) => {
+        if (!ignore) setWeightRecords(records)
+      })
+      .catch((error: unknown) => {
         if (ignore) return
         setWeightRecords([])
         setNotice({ type: 'error', message: getErrorMessage(error, '体重记录加载失败') })
-      } finally {
+      })
+      .finally(() => {
         if (!ignore) setLoadingWeightRecords(false)
-      }
-    }
-
-    void load()
+      })
 
     return () => {
       ignore = true
     }
-  }, [])
+  }, [selectedUserId])
 
   async function handleFoodSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (selectedUserId === null) return
+    const userId = selectedUserId
     setSaving(true)
     setNotice(null)
     try {
       const recordDate = foodForm.recordDate
-      await api.createFoodRecord({
+      await api.createFoodRecord(userId, {
         recordDate,
         mealType: foodForm.mealType,
         foodName: foodForm.foodName.trim(),
@@ -247,14 +339,14 @@ function AppContent() {
         protein: toNumber(foodForm.protein),
         fat: toNumber(foodForm.fat),
         carbohydrate: toNumber(foodForm.carbohydrate),
-        note: optionalNote(foodForm.note),
+        note: optionalText(foodForm.note),
       })
       setFoodForm(initialFoodForm(recordDate))
       setSelectedDate(recordDate)
-      await Promise.all([loadDashboard(recordDate), loadReports()])
-      setNotice({ type: 'success', message: '食物记录已保存' })
+      await Promise.all([loadDashboard(userId, recordDate), loadReports(userId)])
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'success', message: '食物记录已保存' })
     } catch (error) {
-      setNotice({ type: 'error', message: getErrorMessage(error, '食物记录保存失败') })
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'error', message: getErrorMessage(error, '食物记录保存失败') })
     } finally {
       setSaving(false)
     }
@@ -262,24 +354,26 @@ function AppContent() {
 
   async function handleExerciseSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (selectedUserId === null) return
+    const userId = selectedUserId
     setSaving(true)
     setNotice(null)
     try {
       const recordDate = exerciseForm.recordDate
-      await api.createExerciseRecord({
+      await api.createExerciseRecord(userId, {
         recordDate,
         exerciseType: exerciseForm.exerciseType.trim(),
         exerciseName: exerciseForm.exerciseName.trim(),
         durationMinutes: toNumber(exerciseForm.durationMinutes),
         caloriesBurned: toNumber(exerciseForm.caloriesBurned),
-        note: optionalNote(exerciseForm.note),
+        note: optionalText(exerciseForm.note),
       })
       setExerciseForm(initialExerciseForm(recordDate))
       setSelectedDate(recordDate)
-      await Promise.all([loadDashboard(recordDate), loadReports()])
-      setNotice({ type: 'success', message: '运动记录已保存' })
+      await Promise.all([loadDashboard(userId, recordDate), loadReports(userId)])
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'success', message: '运动记录已保存' })
     } catch (error) {
-      setNotice({ type: 'error', message: getErrorMessage(error, '运动记录保存失败') })
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'error', message: getErrorMessage(error, '运动记录保存失败') })
     } finally {
       setSaving(false)
     }
@@ -287,23 +381,26 @@ function AppContent() {
 
   async function handleProfileSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (!profileForm) return
+    if (!profileForm || selectedUserId === null) return
+    const userId = selectedUserId
     setSaving(true)
     setNotice(null)
     try {
-      const nextProfile = await api.updateProfile({
-        nickname: profileForm.nickname.trim(),
-        heightCm: toNumber(profileForm.heightCm),
-        currentWeightKg: toNumber(profileForm.currentWeightKg),
-        targetWeightKg: toNumber(profileForm.targetWeightKg),
-        dailyCalorieGoal: toNumber(profileForm.dailyCalorieGoal),
+      const nextProfile = await api.updateProfile(userId, {
+        nickname: optionalText(profileForm.nickname),
+        heightCm: optionalNumber(profileForm.heightCm),
+        currentWeightKg: optionalNumber(profileForm.currentWeightKg),
+        targetWeightKg: optionalNumber(profileForm.targetWeightKg),
+        dailyCalorieGoal: optionalNumber(profileForm.dailyCalorieGoal),
       })
-      setProfile(nextProfile)
-      setProfileForm(profileToForm(nextProfile))
-      await Promise.all([loadDashboard(selectedDate), loadReports()])
-      setNotice({ type: 'success', message: '目标资料已更新' })
+      if (selectedUserIdRef.current === userId) {
+        setProfile(nextProfile)
+        setProfileForm(profileToForm(nextProfile))
+      }
+      await Promise.all([loadDashboard(userId, selectedDate), loadReports(userId)])
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'success', message: '目标资料已更新' })
     } catch (error) {
-      setNotice({ type: 'error', message: getErrorMessage(error, '目标资料更新失败') })
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'error', message: getErrorMessage(error, '目标资料更新失败') })
     } finally {
       setSaving(false)
     }
@@ -311,66 +408,72 @@ function AppContent() {
 
   async function handleWeightSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (selectedUserId === null) return
+    const userId = selectedUserId
     setSaving(true)
     setNotice(null)
     try {
       const recordDate = weightForm.recordDate
-      await api.createWeightRecord({
+      await api.createWeightRecord(userId, {
         recordDate,
         weightKg: toNumber(weightForm.weightKg),
-        bodyFatPercentage: weightForm.bodyFatPercentage ? toNumber(weightForm.bodyFatPercentage) : null,
-        note: optionalNote(weightForm.note),
+        bodyFatPercentage: optionalNumber(weightForm.bodyFatPercentage),
+        note: optionalText(weightForm.note),
       })
       setWeightForm(initialWeightForm(recordDate))
       setSelectedDate(recordDate)
-      await loadWeightRecords()
-      await loadReports()
-      setNotice({ type: 'success', message: '体重记录已保存' })
+      await Promise.all([loadWeightRecords(userId), loadReports(userId), loadProfile(userId)])
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'success', message: '体重记录已保存' })
     } catch (error) {
-      setNotice({ type: 'error', message: getErrorMessage(error, '体重记录保存失败') })
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'error', message: getErrorMessage(error, '体重记录保存失败') })
     } finally {
       setSaving(false)
     }
   }
 
   async function deleteFoodRecord(id: number) {
+    if (selectedUserId === null) return
+    const userId = selectedUserId
     setSaving(true)
     setNotice(null)
     try {
-      await api.deleteFoodRecord(id)
-      await Promise.all([loadDashboard(selectedDate), loadReports()])
-      setNotice({ type: 'success', message: '食物记录已删除' })
+      await api.deleteFoodRecord(userId, id)
+      await Promise.all([loadDashboard(userId, selectedDate), loadReports(userId)])
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'success', message: '食物记录已删除' })
     } catch (error) {
-      setNotice({ type: 'error', message: getErrorMessage(error, '删除失败') })
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'error', message: getErrorMessage(error, '删除失败') })
     } finally {
       setSaving(false)
     }
   }
 
   async function deleteExerciseRecord(id: number) {
+    if (selectedUserId === null) return
+    const userId = selectedUserId
     setSaving(true)
     setNotice(null)
     try {
-      await api.deleteExerciseRecord(id)
-      await Promise.all([loadDashboard(selectedDate), loadReports()])
-      setNotice({ type: 'success', message: '运动记录已删除' })
+      await api.deleteExerciseRecord(userId, id)
+      await Promise.all([loadDashboard(userId, selectedDate), loadReports(userId)])
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'success', message: '运动记录已删除' })
     } catch (error) {
-      setNotice({ type: 'error', message: getErrorMessage(error, '删除失败') })
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'error', message: getErrorMessage(error, '删除失败') })
     } finally {
       setSaving(false)
     }
   }
 
   async function deleteWeightRecord(id: number) {
+    if (selectedUserId === null) return
+    const userId = selectedUserId
     setSaving(true)
     setNotice(null)
     try {
-      await api.deleteWeightRecord(id)
-      await loadWeightRecords()
-      await loadReports()
-      setNotice({ type: 'success', message: '体重记录已删除' })
+      await api.deleteWeightRecord(userId, id)
+      await Promise.all([loadWeightRecords(userId), loadReports(userId), loadProfile(userId)])
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'success', message: '体重记录已删除' })
     } catch (error) {
-      setNotice({ type: 'error', message: getErrorMessage(error, '删除失败') })
+      if (selectedUserIdRef.current === userId) setNotice({ type: 'error', message: getErrorMessage(error, '删除失败') })
     } finally {
       setSaving(false)
     }
@@ -380,92 +483,96 @@ function AppContent() {
     <AppShell
       activePage={activePage}
       profile={profile}
+      users={users}
+      selectedUserId={selectedUserId}
+      loadingUsers={loadingUsers}
       selectedDate={selectedDate}
       notice={notice}
       onSelectedDateChange={handleSelectedDateChange}
+      onSelectedUserChange={handleSelectedUserChange}
     >
-      <Routes>
-        <Route
-          index
-          element={
-            <DashboardPage
-              dailySummary={dailySummary}
-              recentSummaries={recentSummaries}
-              loadingDashboard={loadingDashboard}
-              saving={saving}
-              onDeleteFoodRecord={(id) => void deleteFoodRecord(id)}
-              onDeleteExerciseRecord={(id) => void deleteExerciseRecord(id)}
-            />
-          }
-        />
-        <Route
-          path="food"
-          element={
-            <FoodRecordPage
-              foodForm={foodForm}
-              dailySummary={dailySummary}
-              loadingDashboard={loadingDashboard}
-              saving={saving}
-              onFoodFormChange={setFoodForm}
-              onFoodSubmit={handleFoodSubmit}
-              onDeleteFoodRecord={(id) => void deleteFoodRecord(id)}
-            />
-          }
-        />
-        <Route
-          path="exercise"
-          element={
-            <ExerciseRecordPage
-              exerciseForm={exerciseForm}
-              dailySummary={dailySummary}
-              loadingDashboard={loadingDashboard}
-              saving={saving}
-              onExerciseFormChange={setExerciseForm}
-              onExerciseSubmit={handleExerciseSubmit}
-              onDeleteExerciseRecord={(id) => void deleteExerciseRecord(id)}
-            />
-          }
-        />
-        <Route
-          path="weight"
-          element={
-            <WeightRecordPage
-              weightForm={weightForm}
-              weightRecords={weightRecords}
-              profile={profile}
-              loadingWeightRecords={loadingWeightRecords}
-              saving={saving}
-              onWeightFormChange={setWeightForm}
-              onWeightSubmit={handleWeightSubmit}
-              onDeleteWeightRecord={(id) => void deleteWeightRecord(id)}
-            />
-          }
-        />
-        <Route
-          path="reports"
-          element={
-            <ReportsPage
-              weeklyReport={weeklyReport}
-              monthlyReport={monthlyReport}
-              loadingReports={loadingReports}
-            />
-          }
-        />
-        <Route
-          path="profile"
-          element={
-            <ProfilePage
-              profile={profile}
-              profileForm={profileForm}
-              loadingProfile={loadingProfile}
-              saving={saving}
-              onProfileFormChange={setProfileForm}
-              onProfileSubmit={handleProfileSubmit}
-            />
-          }
-        />
-        <Route path="*" element={<Navigate to="/" replace />} />
-      </Routes>
+      {selectedUserId === null ? (
+        <section className="panel empty-state">暂无可用用户</section>
+      ) : (
+        <Routes>
+          <Route
+            index
+            element={
+              <DashboardPage
+                dailySummary={dailySummary}
+                recentSummaries={recentSummaries}
+                loadingDashboard={loadingDashboard}
+                saving={saving}
+                onDeleteFoodRecord={(id) => void deleteFoodRecord(id)}
+                onDeleteExerciseRecord={(id) => void deleteExerciseRecord(id)}
+              />
+            }
+          />
+          <Route
+            path="food"
+            element={
+              <FoodRecordPage
+                foodForm={foodForm}
+                dailySummary={dailySummary}
+                loadingDashboard={loadingDashboard}
+                saving={saving}
+                onFoodFormChange={setFoodForm}
+                onFoodSubmit={handleFoodSubmit}
+                onDeleteFoodRecord={(id) => void deleteFoodRecord(id)}
+              />
+            }
+          />
+          <Route
+            path="exercise"
+            element={
+              <ExerciseRecordPage
+                exerciseForm={exerciseForm}
+                dailySummary={dailySummary}
+                loadingDashboard={loadingDashboard}
+                saving={saving}
+                onExerciseFormChange={setExerciseForm}
+                onExerciseSubmit={handleExerciseSubmit}
+                onDeleteExerciseRecord={(id) => void deleteExerciseRecord(id)}
+              />
+            }
+          />
+          <Route
+            path="weight"
+            element={
+              <WeightRecordPage
+                weightForm={weightForm}
+                weightRecords={weightRecords}
+                profile={profile}
+                loadingWeightRecords={loadingWeightRecords}
+                saving={saving}
+                onWeightFormChange={setWeightForm}
+                onWeightSubmit={handleWeightSubmit}
+                onDeleteWeightRecord={(id) => void deleteWeightRecord(id)}
+              />
+            }
+          />
+          <Route
+            path="reports"
+            element={
+              <ReportsPage weeklyReport={weeklyReport} monthlyReport={monthlyReport} loadingReports={loadingReports} />
+            }
+          />
+          <Route
+            path="profile"
+            element={
+              <ProfilePage
+                profile={profile}
+                profileForm={profileForm}
+                loadingProfile={loadingProfile}
+                saving={saving}
+                onProfileFormChange={setProfileForm}
+                onProfileSubmit={handleProfileSubmit}
+              />
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      )}
     </AppShell>
   )
 }

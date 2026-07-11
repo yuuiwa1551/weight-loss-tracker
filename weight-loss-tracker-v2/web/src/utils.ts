@@ -13,3 +13,9 @@ export function formatShortDate(value: string) {
 export function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
+
+export function selectInitialUserId(users: AppUser[], storedValue: string | null) {
+  const storedId = storedValue === null ? Number.NaN : Number(storedValue)
+  return users.some((user) => user.id === storedId) ? storedId : (users[0]?.id ?? null)
+}
+import type { AppUser } from './api'

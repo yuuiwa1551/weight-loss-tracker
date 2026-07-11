@@ -1,6 +1,6 @@
 import type { FormEvent, ReactNode } from 'react'
 import { NavLink } from 'react-router-dom'
-import type { MealType, UserProfile } from './api'
+import type { AppUser, MealType, UserProfile } from './api'
 import { mealLabels } from './constants'
 import { pages, type PageConfig } from './routes'
 import type { ExerciseFormState, FoodFormState, Notice, ProfileFormState, RecordListRow, WeightFormState } from './types'
@@ -8,13 +8,28 @@ import type { ExerciseFormState, FoodFormState, Notice, ProfileFormState, Record
 interface AppShellProps {
   activePage: PageConfig
   profile: UserProfile | null
+  users: AppUser[]
+  selectedUserId: number | null
+  loadingUsers: boolean
   selectedDate: string
   notice: Notice | null
   onSelectedDateChange: (nextDate: string) => void
+  onSelectedUserChange: (userId: number) => void
   children: ReactNode
 }
 
-export function AppShell({ activePage, profile, selectedDate, notice, onSelectedDateChange, children }: AppShellProps) {
+export function AppShell({
+  activePage,
+  profile,
+  users,
+  selectedUserId,
+  loadingUsers,
+  selectedDate,
+  notice,
+  onSelectedDateChange,
+  onSelectedUserChange,
+  children,
+}: AppShellProps) {
   return (
     <div className="shell">
       <aside className="sidebar">
@@ -40,7 +55,7 @@ export function AppShell({ activePage, profile, selectedDate, notice, onSelected
         </nav>
         <div className="profile-strip">
           <span>目标</span>
-          <strong>{profile ? `${profile.dailyCalorieGoal} kcal` : '未加载'}</strong>
+          <strong>{profile?.dailyCalorieGoal != null ? `${profile.dailyCalorieGoal} kcal` : '未设置'}</strong>
         </div>
       </aside>
 
@@ -50,10 +65,28 @@ export function AppShell({ activePage, profile, selectedDate, notice, onSelected
             <p className="eyebrow">{activePage.label}</p>
             <h2>{activePage.heading}</h2>
           </div>
-          <label className="date-control">
-            <span>日期</span>
-            <input type="date" value={selectedDate} onChange={(event) => onSelectedDateChange(event.target.value)} />
-          </label>
+          <div className="topbar-controls">
+            <label className="user-control">
+              <span>用户</span>
+              <select
+                aria-label="当前用户"
+                value={selectedUserId ?? ''}
+                disabled={loadingUsers || users.length === 0}
+                onChange={(event) => onSelectedUserChange(Number(event.target.value))}
+              >
+                {users.length === 0 && <option value="">暂无用户</option>}
+                {users.map((user) => (
+                  <option key={user.id} value={user.id}>
+                    {user.displayName || user.username} / {user.username}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="date-control">
+              <span>日期</span>
+              <input type="date" value={selectedDate} onChange={(event) => onSelectedDateChange(event.target.value)} />
+            </label>
+          </div>
         </header>
 
         {notice && <NoticeBanner notice={notice} />}
@@ -74,7 +107,7 @@ export function MetricCard({
   tone,
 }: {
   label: string
-  value?: number
+  value?: number | null
   suffix: string
   tone: 'ink' | 'teal' | 'amber' | 'berry'
 }) {
@@ -253,11 +286,11 @@ export function ProfileGoalForm({
       </div>
       {profileForm ? (
         <div className="form-grid">
-          <label className="wide">昵称<input value={profileForm.nickname} onChange={(event) => onChange({ ...profileForm, nickname: event.target.value })} required maxLength={60} /></label>
-          <label>身高<input type="number" min="1" step="0.1" value={profileForm.heightCm} onChange={(event) => onChange({ ...profileForm, heightCm: event.target.value })} required /></label>
-          <label>当前体重<input type="number" min="1" step="0.1" value={profileForm.currentWeightKg} onChange={(event) => onChange({ ...profileForm, currentWeightKg: event.target.value })} required /></label>
-          <label>目标体重<input type="number" min="1" step="0.1" value={profileForm.targetWeightKg} onChange={(event) => onChange({ ...profileForm, targetWeightKg: event.target.value })} required /></label>
-          <label>每日目标<input type="number" min="1" value={profileForm.dailyCalorieGoal} onChange={(event) => onChange({ ...profileForm, dailyCalorieGoal: event.target.value })} required /></label>
+          <label className="wide">昵称<input value={profileForm.nickname} onChange={(event) => onChange({ ...profileForm, nickname: event.target.value })} maxLength={60} /></label>
+          <label>身高<input type="number" min="50" max="250" step="0.1" value={profileForm.heightCm} onChange={(event) => onChange({ ...profileForm, heightCm: event.target.value })} /></label>
+          <label>当前体重<input type="number" min="20" max="500" step="0.1" value={profileForm.currentWeightKg} onChange={(event) => onChange({ ...profileForm, currentWeightKg: event.target.value })} /></label>
+          <label>目标体重<input type="number" min="20" max="500" step="0.1" value={profileForm.targetWeightKg} onChange={(event) => onChange({ ...profileForm, targetWeightKg: event.target.value })} /></label>
+          <label>每日目标<input type="number" min="500" max="10000" value={profileForm.dailyCalorieGoal} onChange={(event) => onChange({ ...profileForm, dailyCalorieGoal: event.target.value })} /></label>
         </div>
       ) : (
         <div className="empty-state">资料未加载</div>
