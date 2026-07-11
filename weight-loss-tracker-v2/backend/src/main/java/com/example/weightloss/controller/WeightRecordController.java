@@ -21,7 +21,7 @@ import java.util.List;
 
 @Validated
 @RestController
-@RequestMapping("/api/weight-records")
+@RequestMapping("/api/users/{userId}/weight-records")
 public class WeightRecordController {
 
 	private final WeightRecordService weightRecordService;
@@ -31,20 +31,24 @@ public class WeightRecordController {
 	}
 
 	@PostMapping
-	public ApiResponse<WeightRecordResponse> create(@Valid @RequestBody CreateWeightRecordRequest request) {
-		return ApiResponse.ok("Weight record created", weightRecordService.create(request));
+	public ApiResponse<WeightRecordResponse> create(
+		@PathVariable Long userId,
+		@Valid @RequestBody CreateWeightRecordRequest request
+	) {
+		return ApiResponse.ok("Weight record created", weightRecordService.create(userId, request));
 	}
 
 	@GetMapping("/recent")
 	public ApiResponse<List<WeightRecordResponse>> listRecent(
+		@PathVariable Long userId,
 		@RequestParam(defaultValue = "30") @Min(7) @Max(365) int days
 	) {
-		return ApiResponse.ok(weightRecordService.listRecent(days));
+		return ApiResponse.ok(weightRecordService.listRecent(userId, days));
 	}
 
 	@DeleteMapping("/{id}")
-	public ApiResponse<Void> delete(@PathVariable Long id) {
-		weightRecordService.delete(id);
+	public ApiResponse<Void> delete(@PathVariable Long userId, @PathVariable Long id) {
+		weightRecordService.delete(userId, id);
 		return ApiResponse.ok("Weight record deleted", null);
 	}
 }

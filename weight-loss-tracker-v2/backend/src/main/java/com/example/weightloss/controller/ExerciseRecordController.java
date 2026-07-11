@@ -19,7 +19,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/exercise-records")
+@RequestMapping("/api/users/{userId}/exercise-records")
 public class ExerciseRecordController {
 
 	private final ExerciseRecordService exerciseRecordService;
@@ -29,20 +29,24 @@ public class ExerciseRecordController {
 	}
 
 	@PostMapping
-	public ApiResponse<ExerciseRecordResponse> create(@Valid @RequestBody CreateExerciseRecordRequest request) {
-		return ApiResponse.ok("Exercise record created", exerciseRecordService.create(request));
+	public ApiResponse<ExerciseRecordResponse> create(
+		@PathVariable Long userId,
+		@Valid @RequestBody CreateExerciseRecordRequest request
+	) {
+		return ApiResponse.ok("Exercise record created", exerciseRecordService.create(userId, request));
 	}
 
 	@GetMapping
 	public ApiResponse<List<ExerciseRecordResponse>> listByDate(
+		@PathVariable Long userId,
 		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
 	) {
-		return ApiResponse.ok(exerciseRecordService.listByDate(date == null ? LocalDate.now() : date));
+		return ApiResponse.ok(exerciseRecordService.listByDate(userId, date == null ? LocalDate.now() : date));
 	}
 
 	@DeleteMapping("/{id}")
-	public ApiResponse<Void> delete(@PathVariable Long id) {
-		exerciseRecordService.delete(id);
+	public ApiResponse<Void> delete(@PathVariable Long userId, @PathVariable Long id) {
+		exerciseRecordService.delete(userId, id);
 		return ApiResponse.ok("Exercise record deleted", null);
 	}
 }

@@ -1,6 +1,7 @@
 package com.example.weightloss.dto;
 
 import com.example.weightloss.entity.ExerciseRecord;
+import com.example.weightloss.entity.RecordSource;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -13,6 +14,8 @@ public record ExerciseRecordResponse(
 	Integer durationMinutes,
 	Integer caloriesBurned,
 	String note,
+	RecordSource source,
+	String clientRequestId,
 	LocalDateTime createdAt,
 	LocalDateTime updatedAt
 ) {
@@ -25,6 +28,8 @@ public record ExerciseRecordResponse(
 			record.getDurationMinutes(),
 			record.getCaloriesBurned(),
 			record.getNote(),
+			record.getSource(),
+			record.getClientRequestId(),
 			record.getCreatedAt(),
 			record.getUpdatedAt()
 		);

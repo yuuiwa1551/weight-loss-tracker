@@ -11,20 +11,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class ProfileService {
 
 	private final UserProfileRepository userProfileRepository;
+	private final UserService userService;
 
-	public ProfileService(UserProfileRepository userProfileRepository) {
+	public ProfileService(UserProfileRepository userProfileRepository, UserService userService) {
 		this.userProfileRepository = userProfileRepository;
+		this.userService = userService;
 	}
 
 	@Transactional(readOnly = true)
-	public UserProfileResponse getProfile() {
-		return UserProfileResponse.from(getProfileEntity());
+	public UserProfileResponse getProfile(Long userId) {
+		return UserProfileResponse.from(getProfileEntity(userId));
 	}
 
 	@Transactional
-	public UserProfileResponse updateProfile(UpdateProfileRequest request) {
-		UserProfile profile = getProfileEntity();
-		profile.setNickname(request.nickname());
+	public UserProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
+		UserProfile profile = getProfileEntity(userId);
+		profile.setNickname(normalize(request.nickname()));
 		profile.setHeightCm(request.heightCm());
 		profile.setCurrentWeightKg(request.currentWeightKg());
 		profile.setTargetWeightKg(request.targetWeightKg());
@@ -33,8 +35,20 @@ public class ProfileService {
 	}
 
 	@Transactional(readOnly = true)
-	public UserProfile getProfileEntity() {
-		return userProfileRepository.findFirstByOrderByIdAsc()
-			.orElseThrow(() -> new ResourceNotFoundException("Profile has not been initialized"));
+	public UserProfile getProfileEntity(Long userId) {
+		userService.getEntity(userId);
+		return userProfileRepository.findByUserId(userId)
+			.orElseThrow(() -> new ResourceNotFoundException("Profile not found for user: " + userId));
+	}
+
+	@Transactional
+	public void updateCurrentWeight(Long userId, java.math.BigDecimal currentWeightKg) {
+		UserProfile profile = getProfileEntity(userId);
+		profile.setCurrentWeightKg(currentWeightKg);
+		userProfileRepository.save(profile);
+	}
+
+	private String normalize(String value) {
+		return value == null || value.isBlank() ? null : value.trim();
 	}
 }

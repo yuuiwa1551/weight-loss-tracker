@@ -44,21 +44,21 @@ public class SummaryService {
 	}
 
 	@Transactional(readOnly = true)
-	public DailySummaryResponse getDailySummary(LocalDate date) {
-		UserProfile profile = profileService.getProfileEntity();
-		List<FoodRecord> foodRecords = foodRecordRepository.findByRecordDateOrderByCreatedAtAscIdAsc(date);
-		List<ExerciseRecord> exerciseRecords = exerciseRecordRepository.findByRecordDateOrderByCreatedAtAscIdAsc(date);
+	public DailySummaryResponse getDailySummary(Long userId, LocalDate date) {
+		UserProfile profile = profileService.getProfileEntity(userId);
+		List<FoodRecord> foodRecords = foodRecordRepository.findByUserIdAndRecordDateOrderByCreatedAtAscIdAsc(userId, date);
+		List<ExerciseRecord> exerciseRecords = exerciseRecordRepository.findByUserIdAndRecordDateOrderByCreatedAtAscIdAsc(userId, date);
 
 		return buildDailySummary(date, profile.getDailyCalorieGoal(), foodRecords, exerciseRecords);
 	}
 
 	@Transactional(readOnly = true)
-	public List<RecentSummaryResponse> getRecentSummaries(int days) {
+	public List<RecentSummaryResponse> getRecentSummaries(Long userId, int days) {
 		LocalDate endDate = LocalDate.now();
 		LocalDate startDate = endDate.minusDays(days - 1L);
-		UserProfile profile = profileService.getProfileEntity();
-		List<FoodRecord> foodRecords = foodRecordRepository.findByRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(startDate, endDate);
-		List<ExerciseRecord> exerciseRecords = exerciseRecordRepository.findByRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(startDate, endDate);
+		UserProfile profile = profileService.getProfileEntity(userId);
+		List<FoodRecord> foodRecords = foodRecordRepository.findByUserIdAndRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(userId, startDate, endDate);
+		List<ExerciseRecord> exerciseRecords = exerciseRecordRepository.findByUserIdAndRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(userId, startDate, endDate);
 		Map<LocalDate, List<FoodRecord>> foodRecordsByDate = groupFoodRecordsByDate(foodRecords);
 		Map<LocalDate, List<ExerciseRecord>> exerciseRecordsByDate = groupExerciseRecordsByDate(exerciseRecords);
 
@@ -74,13 +74,13 @@ public class SummaryService {
 	}
 
 	@Transactional(readOnly = true)
-	public PeriodReportResponse getPeriodReport(int days) {
+	public PeriodReportResponse getPeriodReport(Long userId, int days) {
 		LocalDate endDate = LocalDate.now();
 		LocalDate startDate = endDate.minusDays(days - 1L);
-		UserProfile profile = profileService.getProfileEntity();
-		List<FoodRecord> foodRecords = foodRecordRepository.findByRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(startDate, endDate);
-		List<ExerciseRecord> exerciseRecords = exerciseRecordRepository.findByRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(startDate, endDate);
-		List<WeightRecord> weightRecords = weightRecordRepository.findByRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(startDate, endDate);
+		UserProfile profile = profileService.getProfileEntity(userId);
+		List<FoodRecord> foodRecords = foodRecordRepository.findByUserIdAndRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(userId, startDate, endDate);
+		List<ExerciseRecord> exerciseRecords = exerciseRecordRepository.findByUserIdAndRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(userId, startDate, endDate);
+		List<WeightRecord> weightRecords = weightRecordRepository.findByUserIdAndRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(userId, startDate, endDate);
 		Map<LocalDate, List<FoodRecord>> foodRecordsByDate = groupFoodRecordsByDate(foodRecords);
 		Map<LocalDate, List<ExerciseRecord>> exerciseRecordsByDate = groupExerciseRecordsByDate(exerciseRecords);
 
@@ -135,7 +135,7 @@ public class SummaryService {
 		int totalCaloriesConsumed = foodRecords.stream().mapToInt(FoodRecord::getCalories).sum();
 		int totalCaloriesBurned = exerciseRecords.stream().mapToInt(ExerciseRecord::getCaloriesBurned).sum();
 		int netCalories = totalCaloriesConsumed - totalCaloriesBurned;
-		int calorieDifference = dailyCalorieGoal - netCalories;
+		Integer calorieDifference = dailyCalorieGoal == null ? null : dailyCalorieGoal - netCalories;
 
 		return new DailySummaryResponse(
 			date,
@@ -153,7 +153,10 @@ public class SummaryService {
 		);
 	}
 
-	private GoalStatus calculateGoalStatus(int netCalories, int goal) {
+	private GoalStatus calculateGoalStatus(int netCalories, Integer goal) {
+		if (goal == null) {
+			return GoalStatus.UNSET;
+		}
 		int difference = goal - netCalories;
 		if (Math.abs(difference) <= Math.max(100, goal * 0.1)) {
 			return GoalStatus.MEET;

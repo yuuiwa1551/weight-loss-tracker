@@ -1,6 +1,7 @@
 package com.example.weightloss.dto;
 
 import com.example.weightloss.entity.WeightRecord;
+import com.example.weightloss.entity.RecordSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -12,6 +13,8 @@ public record WeightRecordResponse(
 	BigDecimal weightKg,
 	BigDecimal bodyFatPercentage,
 	String note,
+	RecordSource source,
+	String clientRequestId,
 	LocalDateTime createdAt,
 	LocalDateTime updatedAt
 ) {
@@ -22,6 +25,8 @@ public record WeightRecordResponse(
 			record.getWeightKg(),
 			record.getBodyFatPercentage(),
 			record.getNote(),
+			record.getSource(),
+			record.getClientRequestId(),
 			record.getCreatedAt(),
 			record.getUpdatedAt()
 		);

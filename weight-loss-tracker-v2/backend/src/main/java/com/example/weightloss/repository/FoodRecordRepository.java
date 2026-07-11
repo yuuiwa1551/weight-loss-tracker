@@ -5,11 +5,20 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 public interface FoodRecordRepository extends JpaRepository<FoodRecord, Long> {
-	List<FoodRecord> findByRecordDateOrderByCreatedAtAscIdAsc(LocalDate recordDate);
+	List<FoodRecord> findByUserIdAndRecordDateOrderByCreatedAtAscIdAsc(Long userId, LocalDate recordDate);
 
-	List<FoodRecord> findByRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(LocalDate startDate, LocalDate endDate);
+	List<FoodRecord> findByUserIdAndRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(
+		Long userId,
+		LocalDate startDate,
+		LocalDate endDate
+	);
 
-	long countByRecordDate(LocalDate recordDate);
+	long countByUserIdAndRecordDate(Long userId, LocalDate recordDate);
+
+	Optional<FoodRecord> findByIdAndUserId(Long id, Long userId);
+
+	Optional<FoodRecord> findByUserIdAndClientRequestId(Long userId, String clientRequestId);
 }

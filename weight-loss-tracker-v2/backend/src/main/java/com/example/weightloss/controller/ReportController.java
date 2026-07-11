@@ -7,13 +7,14 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @Validated
 @RestController
-@RequestMapping("/api/reports")
+@RequestMapping("/api/users/{userId}/reports")
 public class ReportController {
 
 	private final SummaryService summaryService;
@@ -23,7 +24,10 @@ public class ReportController {
 	}
 
 	@GetMapping("/overview")
-	public ApiResponse<PeriodReportResponse> getOverview(@RequestParam(defaultValue = "7") @Min(7) @Max(365) int days) {
-		return ApiResponse.ok(summaryService.getPeriodReport(days));
+	public ApiResponse<PeriodReportResponse> getOverview(
+		@PathVariable Long userId,
+		@RequestParam(defaultValue = "7") @Min(7) @Max(365) int days
+	) {
+		return ApiResponse.ok(summaryService.getPeriodReport(userId, days));
 	}
 }

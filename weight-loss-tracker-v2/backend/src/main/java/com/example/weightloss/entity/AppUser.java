@@ -5,9 +5,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
-import jakarta.persistence.FetchType;
-import jakarta.persistence.JoinColumn;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -16,7 +13,6 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Getter
@@ -24,33 +20,26 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @Entity
 @Table(
-	name = "user_profiles",
-	uniqueConstraints = @UniqueConstraint(name = "uk_user_profiles_user_id", columnNames = "user_id")
+	name = "app_users",
+	uniqueConstraints = @UniqueConstraint(
+		name = "uk_app_users_platform_username",
+		columnNames = {"platform", "username"}
+	)
 )
-public class UserProfile {
+public class AppUser {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
 
-	@OneToOne(fetch = FetchType.LAZY, optional = false)
-	@JoinColumn(name = "user_id", nullable = false)
-	private AppUser user;
+	@Column(nullable = false, length = 40)
+	private String platform;
 
-	@Column(length = 60)
-	private String nickname;
+	@Column(nullable = false, length = 40)
+	private String username;
 
-	@Column(precision = 6, scale = 2)
-	private BigDecimal heightCm;
-
-	@Column(precision = 6, scale = 2)
-	private BigDecimal currentWeightKg;
-
-	@Column(precision = 6, scale = 2)
-	private BigDecimal targetWeightKg;
-
-	@Column
-	private Integer dailyCalorieGoal;
+	@Column(length = 100)
+	private String displayName;
 
 	@Column(nullable = false, updatable = false)
 	private LocalDateTime createdAt;
@@ -58,9 +47,10 @@ public class UserProfile {
 	@Column(nullable = false)
 	private LocalDateTime updatedAt;
 
-	public UserProfile(AppUser user, String nickname) {
-		this.user = user;
-		this.nickname = nickname;
+	public AppUser(String platform, String username, String displayName) {
+		this.platform = platform;
+		this.username = username;
+		this.displayName = displayName;
 	}
 
 	@PrePersist

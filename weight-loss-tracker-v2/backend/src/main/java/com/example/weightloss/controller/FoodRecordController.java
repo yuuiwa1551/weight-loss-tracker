@@ -19,7 +19,7 @@ import java.time.LocalDate;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/food-records")
+@RequestMapping("/api/users/{userId}/food-records")
 public class FoodRecordController {
 
 	private final FoodRecordService foodRecordService;
@@ -29,20 +29,24 @@ public class FoodRecordController {
 	}
 
 	@PostMapping
-	public ApiResponse<FoodRecordResponse> create(@Valid @RequestBody CreateFoodRecordRequest request) {
-		return ApiResponse.ok("Food record created", foodRecordService.create(request));
+	public ApiResponse<FoodRecordResponse> create(
+		@PathVariable Long userId,
+		@Valid @RequestBody CreateFoodRecordRequest request
+	) {
+		return ApiResponse.ok("Food record created", foodRecordService.create(userId, request));
 	}
 
 	@GetMapping
 	public ApiResponse<List<FoodRecordResponse>> listByDate(
+		@PathVariable Long userId,
 		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
 	) {
-		return ApiResponse.ok(foodRecordService.listByDate(date == null ? LocalDate.now() : date));
+		return ApiResponse.ok(foodRecordService.listByDate(userId, date == null ? LocalDate.now() : date));
 	}
 
 	@DeleteMapping("/{id}")
-	public ApiResponse<Void> delete(@PathVariable Long id) {
-		foodRecordService.delete(id);
+	public ApiResponse<Void> delete(@PathVariable Long userId, @PathVariable Long id) {
+		foodRecordService.delete(userId, id);
 		return ApiResponse.ok("Food record deleted", null);
 	}
 }

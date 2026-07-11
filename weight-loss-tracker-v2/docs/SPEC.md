@@ -2,7 +2,7 @@
 
 ## 1. 项目定位
 
-减肥追踪系统 V2 是一个单用户减肥记录 demo，用于验证核心产品想法：用户每天记录饮食、运动和体重，系统自动汇总热量摄入、运动消耗、净热量、体重变化和目标完成情况。
+减肥追踪系统 V2 是一个本机运行的多用户减肥记录 demo。用户通过本地 Web 或 AstrBot 聊天记录饮食、运动和体重，系统按 QQ 用户隔离数据并自动汇总热量摄入、运动消耗、净热量、体重变化和目标完成情况。
 
 当前版本优先追求：能跑、能联调、数据结构清楚、后续容易扩展。
 
@@ -59,10 +59,10 @@
 
 ### 暂不做
 
-1. 登录注册
-2. 多用户权限
+1. 传统登录注册
+2. 角色、组织和管理员权限体系
 3. 好友、排行榜、社交功能
-4. 真正的 AI 分析
+4. 医疗级 AI 分析
 5. 复杂营养建议
 6. 移动端 App
 
@@ -70,13 +70,27 @@
 
 ## 3. 领域模型
 
-### UserProfile
+### AppUser
 
-单用户 demo 中只保留一条用户资料。
+AstrBot 用户使用 `platform + username` 唯一标识。第一期 `platform` 为 `aiocqhttp`，`username` 为发送者 QQ 号。
 
 字段：
 
 - id
+- platform
+- username
+- displayName
+- createdAt
+- updatedAt
+
+### UserProfile
+
+每个 AppUser 对应一条可渐进完善的资料。
+
+字段：
+
+- id
+- userId
 - nickname
 - heightCm
 - currentWeightKg
@@ -90,6 +104,7 @@
 字段：
 
 - id
+- userId
 - recordDate
 - mealType
 - foodName
@@ -98,6 +113,10 @@
 - fat
 - carbohydrate
 - note
+- source
+- clientRequestId
+- nutritionSource
+- estimationNote
 - createdAt
 - updatedAt
 
@@ -106,12 +125,15 @@
 字段：
 
 - id
+- userId
 - recordDate
 - exerciseType
 - exerciseName
 - durationMinutes
 - caloriesBurned
 - note
+- source
+- clientRequestId
 - createdAt
 - updatedAt
 
@@ -120,10 +142,13 @@
 字段：
 
 - id
+- userId
 - recordDate
 - weightKg
 - bodyFatPercentage
 - note
+- source
+- clientRequestId
 - createdAt
 - updatedAt
 
@@ -185,46 +210,48 @@ PeriodReport 由后端实时聚合，不单独落库。
 ### 用户资料
 
 ```http
-GET /api/profile
-PUT /api/profile
+POST /api/users/resolve
+GET /api/users
+GET /api/users/{userId}/profile
+PUT /api/users/{userId}/profile
 ```
 
 ### 食物记录
 
 ```http
-POST /api/food-records
-GET /api/food-records?date=2026-06-08
-DELETE /api/food-records/{id}
+POST /api/users/{userId}/food-records
+GET /api/users/{userId}/food-records?date=2026-06-08
+DELETE /api/users/{userId}/food-records/{id}
 ```
 
 ### 运动记录
 
 ```http
-POST /api/exercise-records
-GET /api/exercise-records?date=2026-06-08
-DELETE /api/exercise-records/{id}
+POST /api/users/{userId}/exercise-records
+GET /api/users/{userId}/exercise-records?date=2026-06-08
+DELETE /api/users/{userId}/exercise-records/{id}
 ```
 
 ### 体重记录
 
 ```http
-POST /api/weight-records
-GET /api/weight-records/recent?days=30
-DELETE /api/weight-records/{id}
+POST /api/users/{userId}/weight-records
+GET /api/users/{userId}/weight-records/recent?days=30
+DELETE /api/users/{userId}/weight-records/{id}
 ```
 
 ### 汇总
 
 ```http
-GET /api/summaries/daily?date=2026-06-08
-GET /api/summaries/recent?days=7
+GET /api/users/{userId}/summaries/daily?date=2026-06-08
+GET /api/users/{userId}/summaries/recent?days=7
 ```
 
 ### 报表
 
 ```http
-GET /api/reports/overview?days=7
-GET /api/reports/overview?days=30
+GET /api/users/{userId}/reports/overview?days=7
+GET /api/users/{userId}/reports/overview?days=30
 ```
 
 ## 5. 前端页面
@@ -296,3 +323,6 @@ GET /api/reports/overview?days=30
 7. 体重记录能新增、展示和删除
 8. 周期报表能返回 7 天和 30 天统计
 9. README 里的启动步骤可复现
+10. 相同 QQ 在私聊和群聊中映射为同一用户
+11. 不同 QQ 的资料、记录、汇总和报表互相隔离
+12. 重复的 AstrBot 请求不会重复写入记录

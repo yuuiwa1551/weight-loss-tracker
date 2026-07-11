@@ -2,6 +2,8 @@ package com.example.weightloss.dto;
 
 import com.example.weightloss.entity.FoodRecord;
 import com.example.weightloss.entity.MealType;
+import com.example.weightloss.entity.NutritionSource;
+import com.example.weightloss.entity.RecordSource;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -17,6 +19,10 @@ public record FoodRecordResponse(
 	BigDecimal fat,
 	BigDecimal carbohydrate,
 	String note,
+	RecordSource source,
+	String clientRequestId,
+	NutritionSource nutritionSource,
+	String estimationNote,
 	LocalDateTime createdAt,
 	LocalDateTime updatedAt
 ) {
@@ -31,6 +37,10 @@ public record FoodRecordResponse(
 			record.getFat(),
 			record.getCarbohydrate(),
 			record.getNote(),
+			record.getSource(),
+			record.getClientRequestId(),
+			record.getNutritionSource(),
+			record.getEstimationNote(),
 			record.getCreatedAt(),
 			record.getUpdatedAt()
 		);

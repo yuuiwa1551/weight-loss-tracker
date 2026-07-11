@@ -1,5 +1,6 @@
 package com.example.weightloss.dto;
 
+import com.example.weightloss.entity.RecordSource;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -16,6 +17,8 @@ public record CreateExerciseRecordRequest(
 	@NotBlank @Size(max = 120) String exerciseName,
 	@NotNull @Min(1) @Max(1440) Integer durationMinutes,
 	@NotNull @PositiveOrZero @Max(10000) Integer caloriesBurned,
-	@Size(max = 500) String note
+	@Size(max = 500) String note,
+	RecordSource source,
+	@Size(max = 160) String clientRequestId
 ) {
 }

@@ -5,7 +5,12 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.Index;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -23,13 +28,20 @@ import java.time.LocalDateTime;
 @Entity
 @Table(
 	name = "weight_records",
-	indexes = @Index(name = "idx_weight_records_record_date", columnList = "record_date")
+	indexes = {
+		@Index(name = "idx_weight_records_user_date", columnList = "user_id,record_date"),
+		@Index(name = "uk_weight_records_user_request", columnList = "user_id,client_request_id", unique = true)
+	}
 )
 public class WeightRecord {
 
 	@Id
 	@GeneratedValue(strategy = GenerationType.IDENTITY)
 	private Long id;
+
+	@ManyToOne(fetch = FetchType.LAZY, optional = false)
+	@JoinColumn(name = "user_id", nullable = false)
+	private AppUser user;
 
 	@Column(nullable = false)
 	private LocalDate recordDate;
@@ -43,17 +55,35 @@ public class WeightRecord {
 	@Column(length = 500)
 	private String note;
 
+	@Enumerated(EnumType.STRING)
+	@Column(nullable = false, length = 20)
+	private RecordSource source;
+
+	@Column(length = 160)
+	private String clientRequestId;
+
 	@Column(nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 
 	@Column(nullable = false)
 	private LocalDateTime updatedAt;
 
-	public WeightRecord(LocalDate recordDate, BigDecimal weightKg, BigDecimal bodyFatPercentage, String note) {
+	public WeightRecord(
+		AppUser user,
+		LocalDate recordDate,
+		BigDecimal weightKg,
+		BigDecimal bodyFatPercentage,
+		String note,
+		RecordSource source,
+		String clientRequestId
+	) {
+		this.user = user;
 		this.recordDate = recordDate;
 		this.weightKg = weightKg;
 		this.bodyFatPercentage = bodyFatPercentage;
 		this.note = note;
+		this.source = source;
+		this.clientRequestId = clientRequestId;
 	}
 
 	@PrePersist

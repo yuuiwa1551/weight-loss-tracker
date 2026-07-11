@@ -9,6 +9,7 @@ import jakarta.validation.constraints.Min;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -18,7 +19,7 @@ import java.util.List;
 
 @Validated
 @RestController
-@RequestMapping("/api/summaries")
+@RequestMapping("/api/users/{userId}/summaries")
 public class SummaryController {
 
 	private final SummaryService summaryService;
@@ -29,15 +30,17 @@ public class SummaryController {
 
 	@GetMapping("/daily")
 	public ApiResponse<DailySummaryResponse> getDailySummary(
+		@PathVariable Long userId,
 		@RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date
 	) {
-		return ApiResponse.ok(summaryService.getDailySummary(date == null ? LocalDate.now() : date));
+		return ApiResponse.ok(summaryService.getDailySummary(userId, date == null ? LocalDate.now() : date));
 	}
 
 	@GetMapping("/recent")
 	public ApiResponse<List<RecentSummaryResponse>> getRecentSummaries(
+		@PathVariable Long userId,
 		@RequestParam(defaultValue = "7") @Min(1) @Max(90) int days
 	) {
-		return ApiResponse.ok(summaryService.getRecentSummaries(days));
+		return ApiResponse.ok(summaryService.getRecentSummaries(userId, days));
 	}
 }
