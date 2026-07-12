@@ -2,10 +2,13 @@ package com.example.weightloss.config;
 
 import com.example.weightloss.entity.ExerciseRecord;
 import com.example.weightloss.entity.FoodRecord;
+import com.example.weightloss.entity.FormulaSex;
 import com.example.weightloss.entity.AppUser;
 import com.example.weightloss.entity.MealType;
 import com.example.weightloss.entity.NutritionSource;
+import com.example.weightloss.entity.NonExerciseActivityLevel;
 import com.example.weightloss.entity.RecordSource;
+import com.example.weightloss.entity.CalorieGoalMode;
 import com.example.weightloss.entity.UserProfile;
 import com.example.weightloss.entity.WeightRecord;
 import com.example.weightloss.repository.ExerciseRecordRepository;
@@ -87,6 +90,10 @@ public class DemoDataInitializer implements CommandLineRunner {
 		profile.setCurrentWeightKg(new BigDecimal("75.0"));
 		profile.setTargetWeightKg(new BigDecimal("68.0"));
 		profile.setDailyCalorieGoal(1900);
+		profile.setAgeYears(30);
+		profile.setFormulaSex(FormulaSex.MALE);
+		profile.setNonExerciseActivityLevel(NonExerciseActivityLevel.LIGHT);
+		profile.setCalorieGoalMode(CalorieGoalMode.MANUAL);
 		return profile;
 	}
 }

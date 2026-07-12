@@ -104,6 +104,44 @@ class WeightLossTrackerBackendApplicationTests {
 	}
 
 	@Test
+	void updatesEnergyProfileAndKeepsNewFieldsForLegacyRequests() throws Exception {
+		long userId = resolveUser("2000000013", "Energy profile user");
+
+		mockMvc.perform(put(profilePath(userId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "nickname": "Energy profile user",
+					  "heightCm": 165,
+					  "currentWeightKg": 52,
+					  "targetWeightKg": 48,
+					  "dailyCalorieGoal": null,
+					  "ageYears": 24,
+					  "formulaSex": "FEMALE",
+					  "nonExerciseActivityLevel": "LIGHT",
+					  "calorieGoalMode": "AUTO"
+					}
+					"""))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.ageYears").value(24))
+			.andExpect(jsonPath("$.data.formulaSex").value("FEMALE"))
+			.andExpect(jsonPath("$.data.nonExerciseActivityLevel").value("LIGHT"))
+			.andExpect(jsonPath("$.data.calorieGoalMode").value("AUTO"))
+			.andExpect(jsonPath("$.data.energyProfileComplete").value(true))
+			.andExpect(jsonPath("$.data.energyMissingFields.length()").value(0));
+
+		mockMvc.perform(put(profilePath(userId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(profileJson(165, 52, 48, 1500)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.ageYears").value(24))
+			.andExpect(jsonPath("$.data.formulaSex").value("FEMALE"))
+			.andExpect(jsonPath("$.data.nonExerciseActivityLevel").value("LIGHT"))
+			.andExpect(jsonPath("$.data.calorieGoalMode").value("MANUAL"))
+			.andExpect(jsonPath("$.data.energyProfileComplete").value(true));
+	}
+
+	@Test
 	void isolatesFoodAndExerciseRecordsByUser() throws Exception {
 		long firstUser = resolveUser("2000000003", "First");
 		long secondUser = resolveUser("2000000004", "Second");

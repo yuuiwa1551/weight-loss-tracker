@@ -5,6 +5,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
@@ -52,6 +54,21 @@ public class UserProfile {
 	@Column
 	private Integer dailyCalorieGoal;
 
+	@Column
+	private Integer ageYears;
+
+	@Enumerated(EnumType.STRING)
+	@Column(length = 16)
+	private FormulaSex formulaSex;
+
+	@Enumerated(EnumType.STRING)
+	@Column(length = 20)
+	private NonExerciseActivityLevel nonExerciseActivityLevel;
+
+	@Enumerated(EnumType.STRING)
+	@Column(length = 16)
+	private CalorieGoalMode calorieGoalMode;
+
 	@Column(nullable = false, updatable = false)
 	private LocalDateTime createdAt;
 
@@ -68,10 +85,25 @@ public class UserProfile {
 		LocalDateTime now = LocalDateTime.now();
 		this.createdAt = now;
 		this.updatedAt = now;
+		normalizeCalorieGoalMode();
 	}
 
 	@PreUpdate
 	void onUpdate() {
 		this.updatedAt = LocalDateTime.now();
+		normalizeCalorieGoalMode();
+	}
+
+	public CalorieGoalMode effectiveCalorieGoalMode() {
+		if (calorieGoalMode == CalorieGoalMode.AUTO) {
+			return CalorieGoalMode.AUTO;
+		}
+		return dailyCalorieGoal == null ? CalorieGoalMode.UNSET : CalorieGoalMode.MANUAL;
+	}
+
+	private void normalizeCalorieGoalMode() {
+		if (calorieGoalMode == null) {
+			calorieGoalMode = dailyCalorieGoal == null ? CalorieGoalMode.UNSET : CalorieGoalMode.MANUAL;
+		}
 	}
 }

@@ -73,10 +73,16 @@ GET /api/users/{userId}/profile
   "currentWeightKg": 75.0,
   "targetWeightKg": 68.0,
   "dailyCalorieGoal": 1900,
+  "ageYears": 30,
+  "formulaSex": "MALE",
+  "nonExerciseActivityLevel": "LIGHT",
+  "calorieGoalMode": "MANUAL",
   "bmi": 24.5,
   "weightToLoseKg": 7.0,
   "profileComplete": true,
   "missingFields": [],
+  "energyProfileComplete": true,
+  "energyMissingFields": [],
   "createdAt": "2026-06-08T10:00:00",
   "updatedAt": "2026-06-08T10:00:00"
 }
@@ -97,11 +103,15 @@ Content-Type: application/json
   "heightCm": 175.0,
   "currentWeightKg": 75.0,
   "targetWeightKg": 68.0,
-  "dailyCalorieGoal": 1900
+  "dailyCalorieGoal": 1900,
+  "ageYears": 30,
+  "formulaSex": "MALE",
+  "nonExerciseActivityLevel": "LIGHT",
+  "calorieGoalMode": "MANUAL"
 }
 ```
 
-所有资料字段均可为空，以支持 QQ 用户渐进建档。非空时的数值范围：`heightCm` 为 `50.0` 到 `250.0`，`currentWeightKg` 和 `targetWeightKg` 为 `20.0` 到 `500.0`，`dailyCalorieGoal` 为 `500` 到 `10000`。
+所有资料字段均可为空，以支持 QQ 用户渐进建档。非空时的数值范围：`heightCm` 为 `50.0` 到 `250.0`，`currentWeightKg` 和 `targetWeightKg` 为 `20.0` 到 `500.0`，`dailyCalorieGoal` 为 `500` 到 `10000`，`ageYears` 为正整数。旧客户端未发送新增能量字段时，后端保留已有的年龄、计算用性别和活动等级；传入 `dailyCalorieGoal` 且省略 `calorieGoalMode` 时按 `MANUAL` 处理。
 
 ## Food Records
 
@@ -325,11 +335,11 @@ GET /api/users/{userId}/summaries/recent?days=7
 
 ## Phase 6 Energy Contract
 
-以下契约已在 Phase 6 第 1 阶段冻结，但 Controller 将在后续阶段逐步启用。精确计算规则见 [ENERGY_CALCULATION.md](ENERGY_CALCULATION.md)。
+以下契约已在 Phase 6 第 1 阶段冻结，并从第 2 阶段起逐步启用。精确计算规则见 [ENERGY_CALCULATION.md](ENERGY_CALCULATION.md)。
 
 ### 资料扩展
 
-现有 Profile 请求和响应将增加：
+现有 Profile 请求和响应已增加：
 
 ```json
 {
