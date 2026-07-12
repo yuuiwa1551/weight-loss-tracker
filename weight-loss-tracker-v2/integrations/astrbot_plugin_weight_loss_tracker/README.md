@@ -9,14 +9,15 @@
 ## 当前功能
 
 - 以 `aiocqhttp` 发送者 QQ 号自动建档
-- 查询和更新个人目标资料
-- 记录食物、运动和体重
-- 查询每日汇总、7 天趋势和周期报表
-- LLM 估算结果预览、确认和取消
+- 查询和更新个人目标资料，包括年龄、公式性别、活动量和热量目标模式
+- 预览并确认静息消耗、日常总消耗、每日缺口和基础摄入预算
+- 食物与运动的所有数值都由后端预览，确认后才写入；体重保持直接上报
+- 查询每日动态摄入预算、汇总、7 天趋势和周期报表
+- 统一确认、取消和过期处理
 - 撤销当前插件会话中的最近一条写入
 - `/减重状态`、`/减重确认`、`/减重取消`、`/体重` 备用指令
 
-插件注册的 LLM tools：`weight_profile_get`、`weight_profile_update`、`weight_food_record`、`weight_exercise_record`、`weight_body_record`、`weight_daily_summary`、`weight_period_report`、`weight_confirm`、`weight_cancel`、`weight_undo_last`。
+插件注册的 LLM tools：`weight_profile_get`、`weight_profile_update`、`weight_energy_plan_preview`、`weight_energy_budget_get`、`weight_food_record`、`weight_exercise_record`、`weight_body_record`、`weight_daily_summary`、`weight_period_report`、`weight_confirm`、`weight_cancel`、`weight_undo_last`。
 
 ## 配置
 
@@ -39,7 +40,9 @@
 
 ## 调用规则
 
-用户明确提供热量或体重数值时可以直接写入。LLM 推断的食物营养和运动消耗必须先展示预览，用户确认后才写入。所有估算仅供日常记录参考，不构成医疗建议。
+静息消耗、日常总消耗、每日缺口和基础摄入预算作为一份计划统一预览，用户确认后才启用。每次进食和运动的所有数值，无论来自用户、设备还是 LLM，都必须先展示后端生成的预览和预计每日预算，再由用户确认写入。体重上报不属于本次能量数值确认范围，仍直接写入。
+
+每个 QQ 用户同一时间只保留最近一项待确认操作。确认时后端重新校验 preview 指纹；若资料、计划或当日记录已变化，确认会失败，必须重新预览。
 
 ## TODO
 
@@ -50,6 +53,12 @@
 - 健康设备和 App 数据同步
 
 ## 更新历史
+
+### v0.2.0
+
+- 接入 P6 能量资料、计划预览确认和每日动态预算
+- 食物与运动统一改为后端预览、QQ 用户确认后写入
+- 确认结果返回剩余摄入预算和预计缺口
 
 ### v0.1.0
 

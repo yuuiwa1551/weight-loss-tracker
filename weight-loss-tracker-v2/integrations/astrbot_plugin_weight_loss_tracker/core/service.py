@@ -47,6 +47,29 @@ class WeightLossService:
     def _json(data: Any) -> str:
         return json.dumps(data, ensure_ascii=False, separators=(",", ":"), default=str)
 
+    @staticmethod
+    def _budget_text(budget: dict[str, Any] | None) -> str:
+        if not budget:
+            return ""
+        if budget.get("todayIntakeBudgetCalories") is None:
+            return "当前未启用每日热量预算。"
+        return (
+            f"今日预算 {budget.get('todayIntakeBudgetCalories')} kcal，"
+            f"已摄入 {budget.get('caloriesConsumed')} kcal，"
+            f"剩余 {budget.get('remainingIntakeCalories')} kcal，"
+            f"预计总消耗 {budget.get('estimatedTotalExpenditureCalories')} kcal，"
+            f"预计缺口 {budget.get('projectedDeficitCalories')} kcal。"
+        )
+
+    @staticmethod
+    def _plan_text(calculation: dict[str, Any]) -> str:
+        return (
+            f"静息消耗 {calculation.get('restingEnergyCalories')} kcal，"
+            f"日常总消耗 {calculation.get('baselineExpenditureCalories')} kcal，"
+            f"每日缺口 {calculation.get('dailyDeficitCalories')} kcal，"
+            f"基础每日摄入预算 {calculation.get('baseIntakeTargetCalories')} kcal"
+        )
+
     def _remember(self, context: RequestContext, kind: str, user_id: int, record: dict[str, Any], description: str) -> None:
         self._last_writes[context.identity.key] = LastWrite(
             kind=kind,
@@ -67,6 +90,10 @@ class WeightLossService:
         current_weight_kg: float | None = None,
         target_weight_kg: float | None = None,
         daily_calorie_goal: int | None = None,
+        age_years: int | None = None,
+        formula_sex: str = "",
+        non_exercise_activity_level: str = "",
+        calorie_goal_mode: str = "",
     ) -> str:
         user_id = await self._user_id(context)
         current = await self.api.get_profile(user_id)
@@ -84,6 +111,13 @@ class WeightLossService:
                 if daily_calorie_goal is not None
                 else current.get("dailyCalorieGoal")
             ),
+            "ageYears": age_years if age_years is not None else current.get("ageYears"),
+            "formulaSex": formula_sex.strip().upper() or current.get("formulaSex"),
+            "nonExerciseActivityLevel": (
+                non_exercise_activity_level.strip().upper()
+                or current.get("nonExerciseActivityLevel")
+            ),
+            "calorieGoalMode": calorie_goal_mode.strip().upper() or current.get("calorieGoalMode"),
         }
         updated = await self.api.update_profile(user_id, payload)
         return f"资料已更新：{self._json(updated)}"
@@ -118,19 +152,24 @@ class WeightLossService:
             "nutritionSource": "LLM_ESTIMATE" if estimated else "USER_PROVIDED",
             "estimationNote": estimation_note or ("由 LLM 估算" if estimated else None),
         }
+        result = await self.api.preview_food(user_id, payload)
+        payload["previewFingerprint"] = result["previewFingerprint"]
         preview = (
-            f"待确认饮食：{record_date} {meal_type.upper()}，{food_name}，{calories} kcal，"
-            f"蛋白质 {protein}g / 脂肪 {fat}g / 碳水 {carbohydrate}g。"
+            f"待确认饮食：{result['recordDate']} {result['mealType']}，{result['foodName']}，"
+            f"{result['calories']} kcal，蛋白质 {result.get('protein') or 0}g / "
+            f"脂肪 {result.get('fat') or 0}g / 碳水 {result.get('carbohydrate') or 0}g。"
+            f"{self._budget_text(result.get('projectedEnergyBudget'))}"
         )
-        if estimated:
-            self.pending.put(
-                context.identity.key,
-                PendingAction("food", user_id, payload, preview, time.monotonic()),
-            )
-            return preview + "这是估算值，请回复确认或调用 weight_confirm；取消请调用 weight_cancel。"
-        record = await self.api.create_food(user_id, payload)
-        self._remember(context, "food", user_id, record, food_name)
-        return f"饮食已记录：{food_name}，{calories} kcal。"
+        self.pending.put(
+            context.identity.key,
+            PendingAction("food", user_id, payload, preview, time.monotonic()),
+        )
+        source_text = "估算值" if estimated else "用户提供值"
+        return (
+            preview
+            + f"以上为{source_text}，尚未写入。请回复确认或调用 weight_confirm；"
+            "取消请调用 weight_cancel。"
+        )
 
     async def record_exercise(
         self,
@@ -155,19 +194,48 @@ class WeightLossService:
             "source": "ASTRBOT",
             "clientRequestId": self._request_id(context, "exercise"),
         }
+        result = await self.api.preview_exercise(user_id, payload)
+        payload["previewFingerprint"] = result["previewFingerprint"]
         preview = (
-            f"待确认运动：{record_date} {exercise_name}，{duration_minutes} 分钟，"
-            f"消耗 {calories_burned} kcal。"
+            f"待确认运动：{result['recordDate']} {result['exerciseName']}，"
+            f"{result['durationMinutes']} 分钟，消耗 {result['caloriesBurned']} kcal。"
+            f"{self._budget_text(result.get('projectedEnergyBudget'))}"
         )
-        if estimated:
-            self.pending.put(
-                context.identity.key,
-                PendingAction("exercise", user_id, payload, preview, time.monotonic()),
-            )
-            return preview + "这是估算值，请回复确认或调用 weight_confirm；取消请调用 weight_cancel。"
-        record = await self.api.create_exercise(user_id, payload)
-        self._remember(context, "exercise", user_id, record, exercise_name)
-        return f"运动已记录：{exercise_name}，消耗 {calories_burned} kcal。"
+        self.pending.put(
+            context.identity.key,
+            PendingAction("exercise", user_id, payload, preview, time.monotonic()),
+        )
+        source_text = "估算值" if estimated else "用户提供值"
+        return (
+            preview
+            + f"以上为{source_text}，尚未写入。请回复确认或调用 weight_confirm；"
+            "取消请调用 weight_cancel。"
+        )
+
+    async def preview_energy_plan(
+        self,
+        context: RequestContext,
+        daily_deficit_calories: int | None = None,
+        target_period_days: int | None = None,
+    ) -> str:
+        user_id = await self._user_id(context)
+        calculation_request = {
+            "dailyDeficitCalories": daily_deficit_calories,
+            "targetPeriodDays": target_period_days,
+        }
+        result = await self.api.preview_energy_plan(user_id, calculation_request)
+        calculation = result["calculation"]
+        payload = {
+            "calculation": calculation_request,
+            "previewFingerprint": result["previewFingerprint"],
+            "clientRequestId": self._request_id(context, "energy-plan"),
+        }
+        preview = f"待确认热量计划：{self._plan_text(calculation)}。"
+        self.pending.put(
+            context.identity.key,
+            PendingAction("energy_plan", user_id, payload, preview, time.monotonic()),
+        )
+        return preview + "以上数值尚未保存。请回复确认或调用 weight_confirm；取消请调用 weight_cancel。"
 
     async def record_weight(
         self,
@@ -200,6 +268,10 @@ class WeightLossService:
         elif action.kind == "exercise":
             record = await self.api.create_exercise(action.user_id, action.payload)
             description = str(action.payload["exerciseName"])
+        elif action.kind == "energy_plan":
+            plan = await self.api.confirm_energy_plan(action.user_id, action.payload)
+            self.pending.pop(context.identity.key)
+            return f"热量计划已确认：{self._plan_text(plan['calculation'])}。"
         elif action.kind == "delete":
             await self.api.delete_record(
                 action.user_id,
@@ -214,7 +286,7 @@ class WeightLossService:
 
         self.pending.pop(context.identity.key)
         self._remember(context, action.kind, action.user_id, record, description)
-        return f"已确认并写入：{description}。"
+        return f"已确认并写入：{description}。{self._budget_text(record.get('energyBudget'))}"
 
     def cancel(self, context: RequestContext) -> str:
         if self.pending.cancel(context.identity.key):
@@ -241,6 +313,10 @@ class WeightLossService:
     async def daily_summary(self, context: RequestContext, date: str = "") -> str:
         summary = await self.api.daily_summary(await self._user_id(context), date)
         return f"每日汇总：{self._json(summary)}"
+
+    async def daily_energy_budget(self, context: RequestContext, date: str = "") -> str:
+        budget = await self.api.daily_energy_budget(await self._user_id(context), date)
+        return self._budget_text(budget)
 
     async def recent_summary(self, context: RequestContext, days: int = 7) -> str:
         summary = await self.api.recent_summary(await self._user_id(context), days)

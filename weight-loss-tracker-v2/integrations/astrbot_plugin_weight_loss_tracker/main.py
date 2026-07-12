@@ -22,7 +22,7 @@ from .core import (
     "astrbot_plugin_weight_loss_tracker",
     "yuuiwa1551",
     "通过聊天记录饮食、运动、体重和减重目标",
-    "0.1.0",
+    "0.2.0",
     "https://github.com/yuuiwa1551/weight-loss-tracker",
 )
 class WeightLossTrackerPlugin(Star):
@@ -70,6 +70,10 @@ class WeightLossTrackerPlugin(Star):
         current_weight_kg: float | None = None,
         target_weight_kg: float | None = None,
         daily_calorie_goal: int | None = None,
+        age_years: int | None = None,
+        formula_sex: str = "",
+        non_exercise_activity_level: str = "",
+        calorie_goal_mode: str = "",
     ):
         """更新当前 QQ 用户明确提供的减重资料，只传需要更新的字段。
 
@@ -79,6 +83,10 @@ class WeightLossTrackerPlugin(Star):
             current_weight_kg(number): 当前体重公斤，可留空
             target_weight_kg(number): 目标体重公斤，可留空
             daily_calorie_goal(number): 每日热量目标 kcal，可留空
+            age_years(number): 年龄，可留空
+            formula_sex(string): 公式性别 MALE 或 FEMALE，可留空
+            non_exercise_activity_level(string): 非运动活动量 SEDENTARY、LIGHT、MODERATE 或 HIGH，可留空
+            calorie_goal_mode(string): 热量目标模式 UNSET、MANUAL 或 AUTO，可留空
         """
         return await self._call(
             event,
@@ -88,7 +96,42 @@ class WeightLossTrackerPlugin(Star):
             current_weight_kg,
             target_weight_kg,
             daily_calorie_goal,
+            age_years,
+            formula_sex,
+            non_exercise_activity_level,
+            calorie_goal_mode,
         )
+
+    @filter.llm_tool(name="weight_energy_plan_preview")
+    async def weight_energy_plan_preview(
+        self,
+        event: AstrMessageEvent,
+        daily_deficit_calories: int | None = None,
+        target_period_days: int | None = None,
+    ):
+        """计算静息消耗、总消耗、每日缺口和摄入预算，并进入待确认状态。
+
+        daily_deficit_calories 与 target_period_days 最多传一个；都不传时使用默认减重速率。
+
+        Args:
+            daily_deficit_calories(number): 用户指定的每日热量缺口 kcal，可留空
+            target_period_days(number): 达到资料中目标体重的计划天数，可留空
+        """
+        return await self._call(
+            event,
+            self.service.preview_energy_plan,
+            daily_deficit_calories,
+            target_period_days,
+        )
+
+    @filter.llm_tool(name="weight_energy_budget_get")
+    async def weight_energy_budget_get(self, event: AstrMessageEvent, record_date: str = ""):
+        """查询指定日期的动态摄入预算、已摄入、剩余预算和预计缺口。
+
+        Args:
+            record_date(string): ISO 日期 YYYY-MM-DD，留空表示今天
+        """
+        return await self._call(event, self.service.daily_energy_budget, record_date)
 
     @filter.llm_tool(name="weight_food_record")
     async def weight_food_record(
@@ -105,7 +148,7 @@ class WeightLossTrackerPlugin(Star):
         is_estimate: bool = True,
         estimation_note: str = "",
     ):
-        """记录食物。任何由模型推断的热量或营养必须将 is_estimate 设为 true。
+        """预览食物数值并等待确认，不会直接写入。模型推断值必须将 is_estimate 设为 true。
 
         Args:
             record_date(string): ISO 日期 YYYY-MM-DD
@@ -146,7 +189,7 @@ class WeightLossTrackerPlugin(Star):
         note: str = "",
         is_estimate: bool = True,
     ):
-        """记录运动。模型推断消耗热量时必须将 is_estimate 设为 true。
+        """预览运动数值并等待确认，不会直接写入。模型推断消耗热量时必须将 is_estimate 设为 true。
 
         Args:
             record_date(string): ISO 日期 YYYY-MM-DD
@@ -215,7 +258,7 @@ class WeightLossTrackerPlugin(Star):
 
     @filter.llm_tool(name="weight_confirm")
     async def weight_confirm(self, event: AstrMessageEvent):
-        """确认当前 QQ 用户最近一次待确认的估算记录或撤销操作。"""
+        """确认当前 QQ 用户最近一次热量计划、饮食、运动或撤销操作。"""
         return await self._call(event, self.service.confirm)
 
     @filter.llm_tool(name="weight_cancel")

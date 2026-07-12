@@ -70,8 +70,32 @@ class WeightLossApiClient:
     async def create_food(self, user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._request("POST", f"/api/users/{user_id}/food-records", json=payload)
 
+    async def preview_food(self, user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request(
+            "POST", f"/api/users/{user_id}/food-records/preview", json=payload
+        )
+
     async def create_exercise(self, user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._request("POST", f"/api/users/{user_id}/exercise-records", json=payload)
+
+    async def preview_exercise(self, user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request(
+            "POST", f"/api/users/{user_id}/exercise-records/preview", json=payload
+        )
+
+    async def preview_energy_plan(self, user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request(
+            "POST", f"/api/users/{user_id}/energy-plans/preview", json=payload
+        )
+
+    async def confirm_energy_plan(self, user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
+        return await self._request("POST", f"/api/users/{user_id}/energy-plans", json=payload)
+
+    async def daily_energy_budget(self, user_id: int, date: str = "") -> dict[str, Any]:
+        params = {"date": date} if date else None
+        return await self._request(
+            "GET", f"/api/users/{user_id}/energy-budgets/daily", params=params
+        )
 
     async def create_weight(self, user_id: int, payload: dict[str, Any]) -> dict[str, Any]:
         return await self._request("POST", f"/api/users/{user_id}/weight-records", json=payload)

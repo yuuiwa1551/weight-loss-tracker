@@ -1,6 +1,6 @@
 name: astrbot_plugin_weight_loss_tracker
 display_name: 减肥追踪
 desc: 通过 AstrBot LLM tools 将 QQ 用户的饮食、运动、体重和目标资料写入本地 Weight Loss Tracker V2 服务。
-version: v0.1.0
+version: v0.2.0
 author: yuuiwa1551
 repo: https://github.com/yuuiwa1551/weight-loss-tracker
