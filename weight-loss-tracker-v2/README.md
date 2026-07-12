@@ -6,7 +6,7 @@
 
 Phase 5 已完成：后端和 Web 支持 QQ 多用户隔离，AstrBot 插件已部署记录、查询、估算确认和撤销工具。本地 Docker 服务将 Web、API 和 H2 持久化合并部署，并已加入现有 AstrBot 网络。
 
-Phase 6 正在实施，前六阶段已完成：后端已有能量资料、`P6_V1` 计算服务、计划预览/确认、活动计划快照、实时每日预算，以及食物和运动的强制预览确认；Web 和 AstrBot 源插件均已接入资料、计划、预算和统一确认流程。下一步是更新 Docker 与 AstrBot 运行副本并完成联合验收。
+Phase 6 已完成：后端已有能量资料、`P6_V1` 计算服务、计划预览/确认、活动计划快照、实时每日预算，以及食物和运动的强制预览确认；Web 和 AstrBot v0.2.0 均已接入资料、计划、预算和统一确认流程，并完成本机 Docker 与 AstrBot 联合验收。
 
 - 产品规格：[docs/SPEC.md](docs/SPEC.md)
 - 开发计划：[docs/PLAN.md](docs/PLAN.md)

@@ -1,6 +1,6 @@
 # Phase 6：动态热量预算与减重计划
 
-状态：实施中。第 1 至 6 阶段已完成，下一步部署 Docker 与 AstrBot 运行副本并完成联合验收。
+状态：已完成。后端、Web、Docker 和 AstrBot v0.2.0 已完成联合验收。
 
 ## 1. 目标
 
@@ -379,4 +379,6 @@ GET /api/users/{userId}/energy-budgets/daily?date=2026-07-12
 4. 食物、运动预览确认与预算接入：已完成
 5. Web：已完成
 6. AstrBot 插件：已完成并通过 14 项源插件单测
-7. 全量联调与运行部署：待开始
+7. 全量联调与运行部署：已完成
+
+最终验证：后端 27 项测试、Web 5 项测试与生产构建、AstrBot 插件 14 项测试全部通过；`weight-loss-tracker` 容器健康，AstrBot v4.26.4 成功加载插件 v0.2.0 并注册 12 个 LLM tools。真实插件 service smoke test 验证食物和运动在确认前不写入、确认后写入，测试记录随后全部清理。

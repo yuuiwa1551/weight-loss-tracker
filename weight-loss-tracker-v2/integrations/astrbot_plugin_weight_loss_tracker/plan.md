@@ -24,4 +24,4 @@
 
 当前阶段：MVP 已完成，并已部署到当前 AstrBot 运行目录完成加载和 API smoke test。
 
-P6 进度：v0.2.0 源插件已实现能量计划、每日预算和食物/运动统一确认，待更新运行副本并完成联合 smoke test。
+P6 进度：v0.2.0 已部署到 AstrBot 运行目录，注册 12 个 LLM tools，并通过真实后端预览、确认和清理 smoke test。
