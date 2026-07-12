@@ -322,3 +322,149 @@ GET /api/users/{userId}/summaries/recent?days=7
 ```
 
 `days` 范围是 `1` 到 `90`，默认 `7`。
+
+## Phase 6 Energy Contract
+
+以下契约已在 Phase 6 第 1 阶段冻结，但 Controller 将在后续阶段逐步启用。精确计算规则见 [ENERGY_CALCULATION.md](ENERGY_CALCULATION.md)。
+
+### 资料扩展
+
+现有 Profile 请求和响应将增加：
+
+```json
+{
+  "ageYears": 24,
+  "formulaSex": "FEMALE",
+  "nonExerciseActivityLevel": "LIGHT",
+  "calorieGoalMode": "AUTO"
+}
+```
+
+- `formulaSex`：`MALE`、`FEMALE`
+- `nonExerciseActivityLevel`：`SEDENTARY`、`LIGHT`、`MODERATE`、`HIGH`
+- `calorieGoalMode`：`UNSET`、`MANUAL`、`AUTO`
+
+### 计划预览
+
+```http
+POST /api/users/{userId}/energy-plans/preview
+Content-Type: application/json
+```
+
+请求支持三种缺口来源，两个字段不能同时提供：
+
+```json
+{
+  "dailyDeficitCalories": 450,
+  "targetPeriodDays": null
+}
+```
+
+- 只传 `dailyDeficitCalories`：`EXPLICIT`
+- 只传 `targetPeriodDays`：结合 Profile 中的目标体重计算 `TARGET_PERIOD`
+- 两者都不传：使用 `DEFAULT_RATE`
+
+响应 `data`：
+
+```json
+{
+  "calculation": {
+    "calculationMethod": "MIFFLIN_ST_JEOR",
+    "calculationVersion": "P6_V1",
+    "deficitMode": "EXPLICIT",
+    "ageYears": 24,
+    "formulaSex": "FEMALE",
+    "heightCm": 165.0,
+    "weightKg": 52.0,
+    "targetWeightKg": 48.0,
+    "nonExerciseActivityLevel": "LIGHT",
+    "targetPeriodDays": null,
+    "restingEnergyCalories": 1270,
+    "baselineExpenditureCalories": 1651,
+    "dailyDeficitCalories": 450,
+    "baseIntakeTargetCalories": 1201,
+    "profileUpdatedAt": "2026-07-12T12:00:00"
+  },
+  "previewFingerprint": "sha256-hex"
+}
+```
+
+预览不写入业务表。
+
+### 确认计划
+
+```http
+POST /api/users/{userId}/energy-plans
+Content-Type: application/json
+```
+
+```json
+{
+  "calculation": {
+    "dailyDeficitCalories": 450,
+    "targetPeriodDays": null
+  },
+  "previewFingerprint": "sha256-hex",
+  "clientRequestId": "astrbot:1154824108:energy-plan:message-id"
+}
+```
+
+后端重新计算并核对指纹。预览过期返回 `409 Conflict`，不写入计划。相同用户重复提交相同 `clientRequestId` 时返回已有计划。
+
+### 当前计划
+
+```http
+GET /api/users/{userId}/energy-plans/active
+```
+
+响应包含计划 ID、计算快照、状态、生效日期、幂等键和时间戳。创建新计划后，旧计划状态变为 `SUPERSEDED`。
+
+### 食物预览
+
+```http
+POST /api/users/{userId}/food-records/preview
+Content-Type: application/json
+```
+
+请求体与新增食物记录一致。响应返回规范化后的全部食物数值、写入后的 `projectedEnergyBudget` 和 `previewFingerprint`，但不写数据库。
+
+正式调用 `POST /api/users/{userId}/food-records` 时必须回传最近一次 `previewFingerprint`。该字段在 Phase 6 原子写入阶段启用强制校验。
+
+### 运动预览
+
+```http
+POST /api/users/{userId}/exercise-records/preview
+Content-Type: application/json
+```
+
+请求体与新增运动记录一致。响应返回运动时长、消耗热量、写入后的 `projectedEnergyBudget` 和 `previewFingerprint`，但不写数据库。
+
+正式调用 `POST /api/users/{userId}/exercise-records` 时必须回传最近一次 `previewFingerprint`。用户明确提供或设备提供的数值也不能绕过预览。
+
+### 每日能量预算
+
+```http
+GET /api/users/{userId}/energy-budgets/daily?date=2026-07-12
+```
+
+响应 `data`：
+
+```json
+{
+  "date": "2026-07-12",
+  "restingEnergyCalories": 1270,
+  "baselineExpenditureCalories": 1651,
+  "exerciseCaloriesBurned": 280,
+  "estimatedTotalExpenditureCalories": 1931,
+  "baseIntakeTargetCalories": 1201,
+  "todayIntakeBudgetCalories": 1481,
+  "caloriesConsumed": 1100,
+  "remainingIntakeCalories": 381,
+  "projectedDeficitCalories": 831,
+  "goalMode": "AUTO",
+  "calculationMethod": "MIFFLIN_ST_JEOR",
+  "calculationVersion": "P6_V1"
+}
+```
+
+当日预算是已确认计划、食物和运动的实时推导结果，不单独保存冗余快照。计划、食物或运动的预览指纹必须包含相关当日状态；确认时状态变化则返回 `409 Conflict`。

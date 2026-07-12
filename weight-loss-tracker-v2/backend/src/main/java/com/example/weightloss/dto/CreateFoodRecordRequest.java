@@ -26,6 +26,7 @@ public record CreateFoodRecordRequest(
 	RecordSource source,
 	@Size(max = 160) String clientRequestId,
 	NutritionSource nutritionSource,
-	@Size(max = 1000) String estimationNote
+	@Size(max = 1000) String estimationNote,
+	@Size(max = 128) String previewFingerprint
 ) {
 }
