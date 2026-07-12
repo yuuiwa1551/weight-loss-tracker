@@ -1,6 +1,7 @@
 package com.example.weightloss.common;
 
 import com.example.weightloss.service.ResourceNotFoundException;
+import com.example.weightloss.service.ConflictException;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -42,6 +43,11 @@ public class GlobalExceptionHandler {
 	@ExceptionHandler(ResourceNotFoundException.class)
 	public ResponseEntity<ApiResponse<Void>> handleNotFound(ResourceNotFoundException exception) {
 		return ResponseEntity.status(HttpStatus.NOT_FOUND).body(ApiResponse.error(exception.getMessage(), null));
+	}
+
+	@ExceptionHandler(ConflictException.class)
+	public ResponseEntity<ApiResponse<Void>> handleConflict(ConflictException exception) {
+		return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.error(exception.getMessage(), null));
 	}
 
 	@ExceptionHandler(IllegalArgumentException.class)

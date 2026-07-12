@@ -55,6 +55,13 @@ public class ProfileService {
 	}
 
 	@Transactional
+	public UserProfile getProfileEntityForUpdate(Long userId) {
+		userService.getEntity(userId);
+		return userProfileRepository.findByUserIdForUpdate(userId)
+			.orElseThrow(() -> new ResourceNotFoundException("Profile not found for user: " + userId));
+	}
+
+	@Transactional
 	public void updateCurrentWeight(Long userId, java.math.BigDecimal currentWeightKg) {
 		UserProfile profile = getProfileEntity(userId);
 		profile.setCurrentWeightKg(currentWeightKg);

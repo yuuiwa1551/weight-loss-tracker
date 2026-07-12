@@ -1,5 +1,7 @@
 package com.example.weightloss;
 
+import com.example.weightloss.entity.EnergyPlanStatus;
+import com.example.weightloss.repository.EnergyPlanRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -31,6 +33,9 @@ class WeightLossTrackerBackendApplicationTests {
 
 	@Autowired
 	private ObjectMapper objectMapper;
+
+	@Autowired
+	private EnergyPlanRepository energyPlanRepository;
 
 	@Test
 	void contextLoads() {
@@ -83,6 +88,13 @@ class WeightLossTrackerBackendApplicationTests {
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.goalStatus").value("UNSET"))
 			.andExpect(jsonPath("$.data.calorieDifference").doesNotExist());
+
+		mockMvc.perform(get(userPath(userId, "/energy-budgets/daily")))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.goalMode").value("UNSET"))
+			.andExpect(jsonPath("$.data.exerciseCaloriesBurned").value(0))
+			.andExpect(jsonPath("$.data.caloriesConsumed").value(0))
+			.andExpect(jsonPath("$.data.todayIntakeBudgetCalories").doesNotExist());
 	}
 
 	@Test
@@ -101,6 +113,12 @@ class WeightLossTrackerBackendApplicationTests {
 				.content(profileJson(30, 75, 68, 20000)))
 			.andExpect(status().isBadRequest())
 			.andExpect(jsonPath("$.success").value(false));
+
+		mockMvc.perform(get(userPath(userId, "/energy-budgets/daily")))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.goalMode").value("MANUAL"))
+			.andExpect(jsonPath("$.data.baseIntakeTargetCalories").value(1900))
+			.andExpect(jsonPath("$.data.remainingIntakeCalories").value(1900));
 	}
 
 	@Test
@@ -290,6 +308,91 @@ class WeightLossTrackerBackendApplicationTests {
 			.andExpect(jsonPath("$.success").value(false));
 	}
 
+	@Test
+	void previewsConfirmsAndCalculatesAutomaticDailyBudget() throws Exception {
+		long userId = resolveUser("2000000014", "Automatic plan user");
+		updateEnergyProfile(userId, 24);
+
+		mockMvc.perform(get(userPath(userId, "/energy-plans/active")))
+			.andExpect(status().isNotFound());
+
+		String fingerprint = previewPlan(userId, 450);
+		mockMvc.perform(get(userPath(userId, "/energy-plans/active")))
+			.andExpect(status().isNotFound());
+		MvcResult confirmed = confirmPlan(userId, 450, fingerprint, "plan-auto-1");
+		long planId = responseDataId(confirmed);
+
+		mockMvc.perform(post(userPath(userId, "/energy-plans"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(confirmPlanJson(450, fingerprint, "plan-auto-1")))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.id").value(planId));
+
+		String date = LocalDate.now().toString();
+		mockMvc.perform(post(userPath(userId, "/food-records"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(foodJson(date, "budget-food", "USER_PROVIDED")))
+			.andExpect(status().isOk());
+		mockMvc.perform(post(userPath(userId, "/exercise-records"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(exerciseJson(date, "budget-exercise")))
+			.andExpect(status().isOk());
+
+		mockMvc.perform(get(userPath(userId, "/energy-budgets/daily?date=" + date)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.restingEnergyCalories").value(1270))
+			.andExpect(jsonPath("$.data.baselineExpenditureCalories").value(1651))
+			.andExpect(jsonPath("$.data.exerciseCaloriesBurned").value(260))
+			.andExpect(jsonPath("$.data.estimatedTotalExpenditureCalories").value(1911))
+			.andExpect(jsonPath("$.data.baseIntakeTargetCalories").value(1201))
+			.andExpect(jsonPath("$.data.todayIntakeBudgetCalories").value(1461))
+			.andExpect(jsonPath("$.data.caloriesConsumed").value(620))
+			.andExpect(jsonPath("$.data.remainingIntakeCalories").value(841))
+			.andExpect(jsonPath("$.data.projectedDeficitCalories").value(1291))
+			.andExpect(jsonPath("$.data.goalMode").value("AUTO"))
+			.andExpect(jsonPath("$.data.calculationVersion").value("P6_V1"));
+
+		mockMvc.perform(get(profilePath(userId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.calorieGoalMode").value("AUTO"));
+	}
+
+	@Test
+	void rejectsStalePlanPreviewAndSupersedesPreviousPlan() throws Exception {
+		long userId = resolveUser("2000000015", "Stale plan user");
+		updateEnergyProfile(userId, 24);
+		String staleFingerprint = previewPlan(userId, 300);
+		updateEnergyProfile(userId, 25);
+
+		mockMvc.perform(post(userPath(userId, "/energy-plans"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(confirmPlanJson(300, staleFingerprint, "stale-plan")))
+			.andExpect(status().isConflict())
+			.andExpect(jsonPath("$.success").value(false));
+		assertThat(energyPlanRepository.findAll()).isEmpty();
+
+		String firstFingerprint = previewPlan(userId, 300);
+		long firstPlanId = responseDataId(confirmPlan(userId, 300, firstFingerprint, "fresh-plan-1"));
+		String staleReplacementFingerprint = previewPlan(userId, 400);
+		String interleavingFingerprint = previewPlan(userId, 350);
+		confirmPlan(userId, 350, interleavingFingerprint, "interleaving-plan");
+		mockMvc.perform(post(userPath(userId, "/energy-plans"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(confirmPlanJson(400, staleReplacementFingerprint, "stale-replacement")))
+			.andExpect(status().isConflict());
+
+		String secondFingerprint = previewPlan(userId, 400);
+		long secondPlanId = responseDataId(confirmPlan(userId, 400, secondFingerprint, "fresh-plan-2"));
+
+		assertThat(secondPlanId).isNotEqualTo(firstPlanId);
+		assertThat(energyPlanRepository.findByUserIdAndStatus(userId, EnergyPlanStatus.ACTIVE)).hasSize(1);
+		assertThat(energyPlanRepository.findByUserIdAndStatus(userId, EnergyPlanStatus.SUPERSEDED)).hasSize(2);
+		mockMvc.perform(get(userPath(userId, "/energy-plans/active")))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.id").value(secondPlanId))
+			.andExpect(jsonPath("$.data.calculation.dailyDeficitCalories").value(400));
+	}
+
 	private long resolveUser(String username, String displayName) throws Exception {
 		MvcResult result = mockMvc.perform(post("/api/users/resolve")
 				.contentType(MediaType.APPLICATION_JSON)
@@ -308,6 +411,66 @@ class WeightLossTrackerBackendApplicationTests {
 	private long responseDataId(MvcResult result) throws Exception {
 		JsonNode root = objectMapper.readTree(result.getResponse().getContentAsByteArray());
 		return root.path("data").path("id").longValue();
+	}
+
+	private void updateEnergyProfile(long userId, int ageYears) throws Exception {
+		mockMvc.perform(put(profilePath(userId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "nickname": "Energy plan user",
+					  "heightCm": 165,
+					  "currentWeightKg": 52,
+					  "targetWeightKg": 48,
+					  "dailyCalorieGoal": null,
+					  "ageYears": %d,
+					  "formulaSex": "FEMALE",
+					  "nonExerciseActivityLevel": "LIGHT",
+					  "calorieGoalMode": "UNSET"
+					}
+					""".formatted(ageYears)))
+			.andExpect(status().isOk());
+	}
+
+	private String previewPlan(long userId, int dailyDeficitCalories) throws Exception {
+		MvcResult result = mockMvc.perform(post(userPath(userId, "/energy-plans/preview"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("""
+					{
+					  "dailyDeficitCalories": %d,
+					  "targetPeriodDays": null
+					}
+					""".formatted(dailyDeficitCalories)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.calculation.restingEnergyCalories").isNumber())
+			.andExpect(jsonPath("$.data.previewFingerprint").isString())
+			.andReturn();
+		JsonNode root = objectMapper.readTree(result.getResponse().getContentAsByteArray());
+		return root.path("data").path("previewFingerprint").stringValue();
+	}
+
+	private MvcResult confirmPlan(long userId, int dailyDeficitCalories, String fingerprint, String requestId)
+		throws Exception {
+		return mockMvc.perform(post(userPath(userId, "/energy-plans"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(confirmPlanJson(dailyDeficitCalories, fingerprint, requestId)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.status").value("ACTIVE"))
+			.andExpect(jsonPath("$.data.calculation.dailyDeficitCalories").value(dailyDeficitCalories))
+			.andReturn();
+	}
+
+	private String confirmPlanJson(int dailyDeficitCalories, String fingerprint, String requestId) {
+		return """
+			{
+			  "calculation": {
+			    "dailyDeficitCalories": %d,
+			    "targetPeriodDays": null
+			  },
+			  "previewFingerprint": "%s",
+			  "clientRequestId": "%s"
+			}
+			""".formatted(dailyDeficitCalories, fingerprint, requestId);
 	}
 
 	private String userPath(long userId, String suffix) {

@@ -335,7 +335,7 @@ GET /api/users/{userId}/summaries/recent?days=7
 
 ## Phase 6 Energy Contract
 
-以下契约已在 Phase 6 第 1 阶段冻结，并从第 2 阶段起逐步启用。精确计算规则见 [ENERGY_CALCULATION.md](ENERGY_CALCULATION.md)。
+以下契约已在 Phase 6 第 1 阶段冻结。资料、计划预览/确认、活动计划和每日预算接口已启用；食物和运动的强制预览确认将在下一阶段启用。精确计算规则见 [ENERGY_CALCULATION.md](ENERGY_CALCULATION.md)。
 
 ### 资料扩展
 
@@ -421,6 +421,8 @@ Content-Type: application/json
 
 后端重新计算并核对指纹。预览过期返回 `409 Conflict`，不写入计划。相同用户重复提交相同 `clientRequestId` 时返回已有计划。
 
+确认成功后 Profile 的 `calorieGoalMode` 切换为 `AUTO`。确认过程按用户串行化，旧活动计划失效与新计划写入在同一事务内完成。
+
 ### 当前计划
 
 ```http
@@ -428,6 +430,34 @@ GET /api/users/{userId}/energy-plans/active
 ```
 
 响应包含计划 ID、计算快照、状态、生效日期、幂等键和时间戳。创建新计划后，旧计划状态变为 `SUPERSEDED`。
+
+### 每日预算
+
+```http
+GET /api/users/{userId}/energy-budgets/daily?date=2026-07-12
+```
+
+响应 `data`：
+
+```json
+{
+  "date": "2026-07-12",
+  "restingEnergyCalories": 1270,
+  "baselineExpenditureCalories": 1651,
+  "exerciseCaloriesBurned": 260,
+  "estimatedTotalExpenditureCalories": 1911,
+  "baseIntakeTargetCalories": 1201,
+  "todayIntakeBudgetCalories": 1461,
+  "caloriesConsumed": 620,
+  "remainingIntakeCalories": 841,
+  "projectedDeficitCalories": 1291,
+  "goalMode": "AUTO",
+  "calculationMethod": "MIFFLIN_ST_JEOR",
+  "calculationVersion": "P6_V1"
+}
+```
+
+`AUTO` 模式使用已确认活动计划；`MANUAL` 模式沿用手动目标并把当天运动加入可摄入预算；`UNSET` 模式不伪造摄入预算。所有模式的食物和运动合计均来自指定日期的已写入记录。
 
 ### 食物预览
 
