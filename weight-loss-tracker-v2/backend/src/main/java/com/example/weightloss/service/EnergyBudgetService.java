@@ -12,6 +12,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
+import java.util.List;
 
 @Service
 public class EnergyBudgetService {
@@ -36,23 +37,64 @@ public class EnergyBudgetService {
 	@Transactional(readOnly = true)
 	public EnergyBudgetResponse getDailyBudget(Long userId, LocalDate date) {
 		UserProfile profile = profileService.getProfileEntity(userId);
-		int caloriesConsumed = foodRecordRepository
-			.findByUserIdAndRecordDateOrderByCreatedAtAscIdAsc(userId, date)
-			.stream().mapToInt(FoodRecord::getCalories).sum();
-		int exerciseCalories = exerciseRecordRepository
-			.findByUserIdAndRecordDateOrderByCreatedAtAscIdAsc(userId, date)
-			.stream().mapToInt(ExerciseRecord::getCaloriesBurned).sum();
-		EnergyPlan activePlan = energyPlanService.findActiveEntity(userId)
-			.filter(plan -> !date.isBefore(plan.getEffectiveFrom()))
-			.orElse(null);
+		return project(profile, date, 0, 0).budget();
+	}
 
-		if (profile.effectiveCalorieGoalMode() == CalorieGoalMode.AUTO && activePlan != null) {
-			return automaticBudget(date, activePlan, exerciseCalories, caloriesConsumed);
+	EnergyBudgetProjection project(
+		UserProfile profile,
+		LocalDate date,
+		int additionalCaloriesConsumed,
+		int additionalExerciseCalories
+	) {
+		Long userId = profile.getUser().getId();
+		List<FoodRecord> foodRecords = foodRecordRepository
+			.findByUserIdAndRecordDateOrderByCreatedAtAscIdAsc(userId, date);
+		List<ExerciseRecord> exerciseRecords = exerciseRecordRepository
+			.findByUserIdAndRecordDateOrderByCreatedAtAscIdAsc(userId, date);
+		EnergyPlan activePlan = energyPlanService.findActiveEntity(userId).orElse(null);
+		return project(
+			profile,
+			activePlan,
+			date,
+			foodRecords,
+			exerciseRecords,
+			additionalCaloriesConsumed,
+			additionalExerciseCalories
+		);
+	}
+
+	EnergyBudgetProjection project(
+		UserProfile profile,
+		EnergyPlan activePlan,
+		LocalDate date,
+		List<FoodRecord> foodRecords,
+		List<ExerciseRecord> exerciseRecords,
+		int additionalCaloriesConsumed,
+		int additionalExerciseCalories
+	) {
+		int caloriesConsumed = foodRecords.stream().mapToInt(FoodRecord::getCalories).sum()
+			+ additionalCaloriesConsumed;
+		int exerciseCalories = exerciseRecords.stream().mapToInt(ExerciseRecord::getCaloriesBurned).sum()
+			+ additionalExerciseCalories;
+		EnergyPlan applicablePlan = activePlan != null && !date.isBefore(activePlan.getEffectiveFrom())
+			? activePlan
+			: null;
+		EnergyBudgetResponse budget;
+
+		if (profile.effectiveCalorieGoalMode() == CalorieGoalMode.AUTO && applicablePlan != null) {
+			budget = automaticBudget(date, applicablePlan, exerciseCalories, caloriesConsumed);
+		} else if (profile.effectiveCalorieGoalMode() == CalorieGoalMode.MANUAL) {
+			budget = manualBudget(date, profile.getDailyCalorieGoal(), exerciseCalories, caloriesConsumed);
+		} else {
+			budget = unsetBudget(date, exerciseCalories, caloriesConsumed);
 		}
-		if (profile.effectiveCalorieGoalMode() == CalorieGoalMode.MANUAL) {
-			return manualBudget(date, profile.getDailyCalorieGoal(), exerciseCalories, caloriesConsumed);
-		}
-		return unsetBudget(date, exerciseCalories, caloriesConsumed);
+		return new EnergyBudgetProjection(
+			budget,
+			profile,
+			applicablePlan,
+			List.copyOf(foodRecords),
+			List.copyOf(exerciseRecords)
+		);
 	}
 
 	private EnergyBudgetResponse automaticBudget(

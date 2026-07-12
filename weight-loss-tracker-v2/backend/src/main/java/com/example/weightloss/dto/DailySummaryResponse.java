@@ -18,6 +18,7 @@ public record DailySummaryResponse(
 	BigDecimal totalFat,
 	BigDecimal totalCarbohydrate,
 	List<FoodRecordResponse> foodRecords,
-	List<ExerciseRecordResponse> exerciseRecords
+	List<ExerciseRecordResponse> exerciseRecords,
+	EnergyBudgetResponse energyBudget
 ) {
 }

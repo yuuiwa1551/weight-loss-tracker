@@ -167,7 +167,7 @@ class WeightLossTrackerBackendApplicationTests {
 
 		mockMvc.perform(post(userPath(firstUser, "/food-records"))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(foodJson(date, "meal-first", "LLM_ESTIMATE")))
+				.content(confirmedFoodJson(firstUser, date, "meal-first", "LLM_ESTIMATE")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.foodName").value("Salmon rice bowl"))
 			.andExpect(jsonPath("$.data.nutritionSource").value("LLM_ESTIMATE"))
@@ -175,7 +175,7 @@ class WeightLossTrackerBackendApplicationTests {
 
 		mockMvc.perform(post(userPath(firstUser, "/exercise-records"))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(exerciseJson(date, "exercise-first")))
+				.content(confirmedExerciseJson(firstUser, date, "exercise-first")))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.exerciseName").value("Full-body session"));
 
@@ -194,7 +194,7 @@ class WeightLossTrackerBackendApplicationTests {
 		String date = LocalDate.now().toString();
 		long recordId = responseDataId(mockMvc.perform(post(userPath(owner, "/food-records"))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(foodJson(date, "owner-meal", "USER_PROVIDED")))
+				.content(confirmedFoodJson(owner, date, "owner-meal", "USER_PROVIDED")))
 			.andExpect(status().isOk())
 			.andReturn());
 
@@ -208,7 +208,7 @@ class WeightLossTrackerBackendApplicationTests {
 	void foodCreateIsIdempotentByClientRequestId() throws Exception {
 		long userId = resolveUser("2000000007", "Idempotent");
 		String date = LocalDate.now().toString();
-		String payload = foodJson(date, "same-message", "LLM_ESTIMATE");
+		String payload = confirmedFoodJson(userId, date, "same-message", "LLM_ESTIMATE");
 
 		long firstId = responseDataId(mockMvc.perform(post(userPath(userId, "/food-records"))
 				.contentType(MediaType.APPLICATION_JSON)
@@ -223,6 +223,88 @@ class WeightLossTrackerBackendApplicationTests {
 
 		assertThat(secondId).isEqualTo(firstId);
 		mockMvc.perform(get(userPath(userId, "/food-records") + "?date=" + date))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.length()").value(1));
+	}
+
+	@Test
+	void recordPreviewsRequireFreshFingerprintAndReturnProjectedBudget() throws Exception {
+		long userId = resolveUser("2000000016", "Record preview user");
+		String date = LocalDate.now().toString();
+		mockMvc.perform(put(profilePath(userId))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(profileJson(165, 52, 48, 1900)))
+			.andExpect(status().isOk());
+
+		mockMvc.perform(post(userPath(userId, "/food-records"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(foodJson(date, "missing-fingerprint", "USER_PROVIDED", null)))
+			.andExpect(status().isBadRequest());
+		mockMvc.perform(get(userPath(userId, "/food-records?date=" + date)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.length()").value(0));
+
+		String staleRequestId = "stale-food-preview";
+		MvcResult stalePreview = mockMvc.perform(post(userPath(userId, "/food-records/preview"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(foodJson(date, staleRequestId, "USER_PROVIDED", null)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.calories").value(620))
+			.andExpect(jsonPath("$.data.projectedEnergyBudget.caloriesConsumed").value(620))
+			.andExpect(jsonPath("$.data.projectedEnergyBudget.remainingIntakeCalories").value(1280))
+			.andReturn();
+		String staleFingerprint = responseData(stalePreview).path("previewFingerprint").stringValue();
+
+		mockMvc.perform(post(userPath(userId, "/food-records"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(confirmedFoodJson(userId, date, "interleaving-food", "USER_PROVIDED")))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.energyBudget.caloriesConsumed").value(620))
+			.andExpect(jsonPath("$.data.energyBudget.remainingIntakeCalories").value(1280));
+		mockMvc.perform(post(userPath(userId, "/food-records"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(foodJson(date, staleRequestId, "USER_PROVIDED", staleFingerprint)))
+			.andExpect(status().isConflict());
+		mockMvc.perform(get(userPath(userId, "/food-records?date=" + date)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.length()").value(1));
+
+		String exerciseRequestId = "confirmed-exercise";
+		MvcResult exercisePreview = mockMvc.perform(post(userPath(userId, "/exercise-records/preview"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(exerciseJson(date, exerciseRequestId, null)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.durationMinutes").value(45))
+			.andExpect(jsonPath("$.data.caloriesBurned").value(260))
+			.andExpect(jsonPath("$.data.projectedEnergyBudget.exerciseCaloriesBurned").value(260))
+			.andExpect(jsonPath("$.data.projectedEnergyBudget.remainingIntakeCalories").value(1540))
+			.andReturn();
+		String exerciseFingerprint = responseData(exercisePreview).path("previewFingerprint").stringValue();
+		mockMvc.perform(post(userPath(userId, "/food-records"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(confirmedFoodJson(userId, date, "exercise-interleaving-food", "USER_PROVIDED")))
+			.andExpect(status().isOk());
+		mockMvc.perform(post(userPath(userId, "/exercise-records"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(exerciseJson(date, exerciseRequestId, exerciseFingerprint)))
+			.andExpect(status().isConflict());
+		mockMvc.perform(get(userPath(userId, "/exercise-records?date=" + date)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.length()").value(0));
+
+		String exercisePayload = confirmedExerciseJson(userId, date, exerciseRequestId);
+		long exerciseId = responseDataId(mockMvc.perform(post(userPath(userId, "/exercise-records"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(exercisePayload))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.energyBudget.remainingIntakeCalories").value(920))
+			.andReturn());
+		mockMvc.perform(post(userPath(userId, "/exercise-records"))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(exercisePayload))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.id").value(exerciseId));
+		mockMvc.perform(get(userPath(userId, "/exercise-records?date=" + date)))
 			.andExpect(status().isOk())
 			.andExpect(jsonPath("$.data.length()").value(1));
 	}
@@ -285,7 +367,7 @@ class WeightLossTrackerBackendApplicationTests {
 			.andExpect(status().isOk());
 		mockMvc.perform(post(userPath(configured, "/food-records"))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(foodJson(date, "report-food", "USER_PROVIDED")))
+				.content(confirmedFoodJson(configured, date, "report-food", "USER_PROVIDED")))
 			.andExpect(status().isOk());
 
 		mockMvc.perform(get(userPath(configured, "/reports/overview?days=7")))
@@ -331,11 +413,11 @@ class WeightLossTrackerBackendApplicationTests {
 		String date = LocalDate.now().toString();
 		mockMvc.perform(post(userPath(userId, "/food-records"))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(foodJson(date, "budget-food", "USER_PROVIDED")))
+				.content(confirmedFoodJson(userId, date, "budget-food", "USER_PROVIDED")))
 			.andExpect(status().isOk());
 		mockMvc.perform(post(userPath(userId, "/exercise-records"))
 				.contentType(MediaType.APPLICATION_JSON)
-				.content(exerciseJson(date, "budget-exercise")))
+				.content(confirmedExerciseJson(userId, date, "budget-exercise")))
 			.andExpect(status().isOk());
 
 		mockMvc.perform(get(userPath(userId, "/energy-budgets/daily?date=" + date)))
@@ -351,6 +433,11 @@ class WeightLossTrackerBackendApplicationTests {
 			.andExpect(jsonPath("$.data.projectedDeficitCalories").value(1291))
 			.andExpect(jsonPath("$.data.goalMode").value("AUTO"))
 			.andExpect(jsonPath("$.data.calculationVersion").value("P6_V1"));
+		mockMvc.perform(get(userPath(userId, "/summaries/daily?date=" + date)))
+			.andExpect(status().isOk())
+			.andExpect(jsonPath("$.data.dailyCalorieGoal").value(1201))
+			.andExpect(jsonPath("$.data.calorieDifference").value(841))
+			.andExpect(jsonPath("$.data.energyBudget.remainingIntakeCalories").value(841));
 
 		mockMvc.perform(get(profilePath(userId)))
 			.andExpect(status().isOk())
@@ -409,8 +496,12 @@ class WeightLossTrackerBackendApplicationTests {
 	}
 
 	private long responseDataId(MvcResult result) throws Exception {
+		return responseData(result).path("id").longValue();
+	}
+
+	private JsonNode responseData(MvcResult result) throws Exception {
 		JsonNode root = objectMapper.readTree(result.getResponse().getContentAsByteArray());
-		return root.path("data").path("id").longValue();
+		return root.path("data");
 	}
 
 	private void updateEnergyProfile(long userId, int ageYears) throws Exception {
@@ -493,7 +584,13 @@ class WeightLossTrackerBackendApplicationTests {
 			""".formatted(height, currentWeight, targetWeight, calorieGoal);
 	}
 
-	private String foodJson(String date, String requestId, String nutritionSource) {
+	private String confirmedFoodJson(long userId, String date, String requestId, String nutritionSource) throws Exception {
+		String previewPayload = foodJson(date, requestId, nutritionSource, null);
+		String fingerprint = previewRecord(userId, "/food-records/preview", previewPayload);
+		return foodJson(date, requestId, nutritionSource, fingerprint);
+	}
+
+	private String foodJson(String date, String requestId, String nutritionSource, String previewFingerprint) {
 		return """
 			{
 			  "recordDate": "%s",
@@ -507,12 +604,19 @@ class WeightLossTrackerBackendApplicationTests {
 			  "source": "ASTRBOT",
 			  "clientRequestId": "%s",
 			  "nutritionSource": "%s",
-			  "estimationNote": "Estimated from one serving"
+			  "estimationNote": "Estimated from one serving",
+			  "previewFingerprint": %s
 			}
-			""".formatted(date, requestId, nutritionSource);
+			""".formatted(date, requestId, nutritionSource, jsonStringOrNull(previewFingerprint));
 	}
 
-	private String exerciseJson(String date, String requestId) {
+	private String confirmedExerciseJson(long userId, String date, String requestId) throws Exception {
+		String previewPayload = exerciseJson(date, requestId, null);
+		String fingerprint = previewRecord(userId, "/exercise-records/preview", previewPayload);
+		return exerciseJson(date, requestId, fingerprint);
+	}
+
+	private String exerciseJson(String date, String requestId, String previewFingerprint) {
 		return """
 			{
 			  "recordDate": "%s",
@@ -522,9 +626,23 @@ class WeightLossTrackerBackendApplicationTests {
 			  "caloriesBurned": 260,
 			  "note": "integration test",
 			  "source": "ASTRBOT",
-			  "clientRequestId": "%s"
+			  "clientRequestId": "%s",
+			  "previewFingerprint": %s
 			}
-			""".formatted(date, requestId);
+			""".formatted(date, requestId, jsonStringOrNull(previewFingerprint));
+	}
+
+	private String previewRecord(long userId, String endpoint, String payload) throws Exception {
+		MvcResult result = mockMvc.perform(post(userPath(userId, endpoint))
+				.contentType(MediaType.APPLICATION_JSON)
+				.content(payload))
+			.andExpect(status().isOk())
+			.andReturn();
+		return responseData(result).path("previewFingerprint").stringValue();
+	}
+
+	private String jsonStringOrNull(String value) {
+		return value == null ? "null" : "\"" + value + "\"";
 	}
 
 	private String weightJson(String date, String weight, String requestId) {

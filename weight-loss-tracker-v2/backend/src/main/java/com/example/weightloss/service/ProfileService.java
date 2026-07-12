@@ -26,7 +26,7 @@ public class ProfileService {
 
 	@Transactional
 	public UserProfileResponse updateProfile(Long userId, UpdateProfileRequest request) {
-		UserProfile profile = getProfileEntity(userId);
+		UserProfile profile = getProfileEntityForUpdate(userId);
 		profile.setNickname(normalize(request.nickname()));
 		profile.setHeightCm(request.heightCm());
 		profile.setCurrentWeightKg(request.currentWeightKg());
@@ -63,7 +63,7 @@ public class ProfileService {
 
 	@Transactional
 	public void updateCurrentWeight(Long userId, java.math.BigDecimal currentWeightKg) {
-		UserProfile profile = getProfileEntity(userId);
+		UserProfile profile = getProfileEntityForUpdate(userId);
 		profile.setCurrentWeightKg(currentWeightKg);
 		userProfileRepository.save(profile);
 	}

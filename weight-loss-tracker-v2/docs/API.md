@@ -137,13 +137,14 @@ Content-Type: application/json
   "source": "ASTRBOT",
   "clientRequestId": "aiocqhttp:message-id:food",
   "nutritionSource": "LLM_ESTIMATE",
-  "estimationNote": "Estimated from one serving"
+  "estimationNote": "Estimated from one serving",
+  "previewFingerprint": "最近一次预览返回的指纹"
 }
 ```
 
 `mealType` 可选值：`BREAKFAST`、`LUNCH`、`DINNER`、`SNACK`。
 数值范围：`calories` 为 `0` 到 `20000`，`protein`、`fat`、`carbohydrate` 为 `0.0` 到 `1000.0`。
-`source` 默认为 `WEB`；`nutritionSource` 默认为 `USER_PROVIDED`。同一用户重复提交相同的非空 `clientRequestId` 时返回已有记录。
+`source` 默认为 `WEB`；`nutritionSource` 默认为 `USER_PROVIDED`。`clientRequestId` 必填。同一用户重复提交相同的 `clientRequestId` 时返回已有记录。正式创建必须带最近一次预览返回的 `previewFingerprint`，成功响应在原记录字段后追加 `energyBudget`。
 
 ### 查询某日食物记录
 
@@ -179,11 +180,13 @@ Content-Type: application/json
   "caloriesBurned": 280,
   "note": "optional",
   "source": "ASTRBOT",
-  "clientRequestId": "aiocqhttp:message-id:exercise"
+  "clientRequestId": "aiocqhttp:message-id:exercise",
+  "previewFingerprint": "最近一次预览返回的指纹"
 }
 ```
 
 数值范围：`durationMinutes` 为 `1` 到 `1440`，`caloriesBurned` 为 `0` 到 `10000`。
+`clientRequestId` 必填。正式创建必须带最近一次预览返回的 `previewFingerprint`，成功响应在原记录字段后追加 `energyBudget`。
 
 ### 查询某日运动记录
 
@@ -319,11 +322,20 @@ GET /api/users/{userId}/summaries/daily?date=2026-06-08
   "totalFat": 25.0,
   "totalCarbohydrate": 80.0,
   "foodRecords": [],
-  "exerciseRecords": []
+  "exerciseRecords": [],
+  "energyBudget": {
+    "date": "2026-06-08",
+    "baseIntakeTargetCalories": 1900,
+    "todayIntakeBudgetCalories": 2180,
+    "caloriesConsumed": 780,
+    "exerciseCaloriesBurned": 280,
+    "remainingIntakeCalories": 1400,
+    "goalMode": "MANUAL"
+  }
 }
 ```
 
-`goalStatus` 可选值：`UNSET`、`UNDER`、`MEET`、`OVER`。用户未设置每日热量目标时，`dailyCalorieGoal` 和 `calorieDifference` 为 `null`，状态为 `UNSET`。
+`goalStatus` 可选值：`UNSET`、`UNDER`、`MEET`、`OVER`。`dailyCalorieGoal` 表示不含专项运动的基础摄入目标，`calorieDifference` 与 `energyBudget.remainingIntakeCalories` 一致。用户未设置目标时二者为 `null`，状态为 `UNSET`。
 
 ### 最近趋势
 
@@ -335,7 +347,7 @@ GET /api/users/{userId}/summaries/recent?days=7
 
 ## Phase 6 Energy Contract
 
-以下契约已在 Phase 6 第 1 阶段冻结。资料、计划预览/确认、活动计划和每日预算接口已启用；食物和运动的强制预览确认将在下一阶段启用。精确计算规则见 [ENERGY_CALCULATION.md](ENERGY_CALCULATION.md)。
+以下契约已在 Phase 6 第 1 阶段冻结。资料、计划、每日预算、食物和运动预览确认接口均已启用。精确计算规则见 [ENERGY_CALCULATION.md](ENERGY_CALCULATION.md)。
 
 ### 资料扩展
 
@@ -457,7 +469,7 @@ GET /api/users/{userId}/energy-budgets/daily?date=2026-07-12
 }
 ```
 
-`AUTO` 模式使用已确认活动计划；`MANUAL` 模式沿用手动目标并把当天运动加入可摄入预算；`UNSET` 模式不伪造摄入预算。所有模式的食物和运动合计均来自指定日期的已写入记录。
+`AUTO` 模式使用已确认活动计划；`MANUAL` 模式沿用手动目标并把当天运动加入可摄入预算；`UNSET` 模式不伪造摄入预算。所有模式的食物和运动合计均来自指定日期的已写入记录。当日预算是实时推导结果，不单独保存冗余快照。
 
 ### 食物预览
 
@@ -468,7 +480,7 @@ Content-Type: application/json
 
 请求体与新增食物记录一致。响应返回规范化后的全部食物数值、写入后的 `projectedEnergyBudget` 和 `previewFingerprint`，但不写数据库。
 
-正式调用 `POST /api/users/{userId}/food-records` 时必须回传最近一次 `previewFingerprint`。该字段在 Phase 6 原子写入阶段启用强制校验。
+正式调用 `POST /api/users/{userId}/food-records` 时必须回传最近一次 `previewFingerprint`。确认时后端按用户加锁并重新计算；资料、计划或同日记录变化会返回 `409 Conflict`，不产生部分写入。成功响应包含实际记录和 `energyBudget`。
 
 ### 运动预览
 
@@ -479,32 +491,4 @@ Content-Type: application/json
 
 请求体与新增运动记录一致。响应返回运动时长、消耗热量、写入后的 `projectedEnergyBudget` 和 `previewFingerprint`，但不写数据库。
 
-正式调用 `POST /api/users/{userId}/exercise-records` 时必须回传最近一次 `previewFingerprint`。用户明确提供或设备提供的数值也不能绕过预览。
-
-### 每日能量预算
-
-```http
-GET /api/users/{userId}/energy-budgets/daily?date=2026-07-12
-```
-
-响应 `data`：
-
-```json
-{
-  "date": "2026-07-12",
-  "restingEnergyCalories": 1270,
-  "baselineExpenditureCalories": 1651,
-  "exerciseCaloriesBurned": 280,
-  "estimatedTotalExpenditureCalories": 1931,
-  "baseIntakeTargetCalories": 1201,
-  "todayIntakeBudgetCalories": 1481,
-  "caloriesConsumed": 1100,
-  "remainingIntakeCalories": 381,
-  "projectedDeficitCalories": 831,
-  "goalMode": "AUTO",
-  "calculationMethod": "MIFFLIN_ST_JEOR",
-  "calculationVersion": "P6_V1"
-}
-```
-
-当日预算是已确认计划、食物和运动的实时推导结果，不单独保存冗余快照。计划、食物或运动的预览指纹必须包含相关当日状态；确认时状态变化则返回 `409 Conflict`。
+正式调用 `POST /api/users/{userId}/exercise-records` 时必须回传最近一次 `previewFingerprint`。用户明确提供或设备提供的数值也不能绕过预览。成功响应包含实际记录和 `energyBudget`。

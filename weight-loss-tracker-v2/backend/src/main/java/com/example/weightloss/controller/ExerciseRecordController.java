@@ -2,6 +2,7 @@ package com.example.weightloss.controller;
 
 import com.example.weightloss.common.ApiResponse;
 import com.example.weightloss.dto.CreateExerciseRecordRequest;
+import com.example.weightloss.dto.ExerciseRecordPreviewResponse;
 import com.example.weightloss.dto.ExerciseRecordResponse;
 import com.example.weightloss.service.ExerciseRecordService;
 import jakarta.validation.Valid;
@@ -34,6 +35,14 @@ public class ExerciseRecordController {
 		@Valid @RequestBody CreateExerciseRecordRequest request
 	) {
 		return ApiResponse.ok("Exercise record created", exerciseRecordService.create(userId, request));
+	}
+
+	@PostMapping("/preview")
+	public ApiResponse<ExerciseRecordPreviewResponse> preview(
+		@PathVariable Long userId,
+		@Valid @RequestBody CreateExerciseRecordRequest request
+	) {
+		return ApiResponse.ok(exerciseRecordService.preview(userId, request));
 	}
 
 	@GetMapping

@@ -2,6 +2,7 @@ package com.example.weightloss.controller;
 
 import com.example.weightloss.common.ApiResponse;
 import com.example.weightloss.dto.CreateFoodRecordRequest;
+import com.example.weightloss.dto.FoodRecordPreviewResponse;
 import com.example.weightloss.dto.FoodRecordResponse;
 import com.example.weightloss.service.FoodRecordService;
 import jakarta.validation.Valid;
@@ -34,6 +35,14 @@ public class FoodRecordController {
 		@Valid @RequestBody CreateFoodRecordRequest request
 	) {
 		return ApiResponse.ok("Food record created", foodRecordService.create(userId, request));
+	}
+
+	@PostMapping("/preview")
+	public ApiResponse<FoodRecordPreviewResponse> preview(
+		@PathVariable Long userId,
+		@Valid @RequestBody CreateFoodRecordRequest request
+	) {
+		return ApiResponse.ok(foodRecordService.preview(userId, request));
 	}
 
 	@GetMapping

@@ -24,9 +24,14 @@ public record FoodRecordResponse(
 	NutritionSource nutritionSource,
 	String estimationNote,
 	LocalDateTime createdAt,
-	LocalDateTime updatedAt
+	LocalDateTime updatedAt,
+	EnergyBudgetResponse energyBudget
 ) {
 	public static FoodRecordResponse from(FoodRecord record) {
+		return from(record, null);
+	}
+
+	public static FoodRecordResponse from(FoodRecord record, EnergyBudgetResponse energyBudget) {
 		return new FoodRecordResponse(
 			record.getId(),
 			record.getRecordDate(),
@@ -42,7 +47,8 @@ public record FoodRecordResponse(
 			record.getNutritionSource(),
 			record.getEstimationNote(),
 			record.getCreatedAt(),
-			record.getUpdatedAt()
+			record.getUpdatedAt(),
+			energyBudget
 		);
 	}
 }

@@ -17,9 +17,14 @@ public record ExerciseRecordResponse(
 	RecordSource source,
 	String clientRequestId,
 	LocalDateTime createdAt,
-	LocalDateTime updatedAt
+	LocalDateTime updatedAt,
+	EnergyBudgetResponse energyBudget
 ) {
 	public static ExerciseRecordResponse from(ExerciseRecord record) {
+		return from(record, null);
+	}
+
+	public static ExerciseRecordResponse from(ExerciseRecord record, EnergyBudgetResponse energyBudget) {
 		return new ExerciseRecordResponse(
 			record.getId(),
 			record.getRecordDate(),
@@ -31,7 +36,8 @@ public record ExerciseRecordResponse(
 			record.getSource(),
 			record.getClientRequestId(),
 			record.getCreatedAt(),
-			record.getUpdatedAt()
+			record.getUpdatedAt(),
+			energyBudget
 		);
 	}
 }

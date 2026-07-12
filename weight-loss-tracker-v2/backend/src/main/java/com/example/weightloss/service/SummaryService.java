@@ -1,11 +1,13 @@
 package com.example.weightloss.service;
 
 import com.example.weightloss.dto.DailySummaryResponse;
+import com.example.weightloss.dto.EnergyBudgetResponse;
 import com.example.weightloss.dto.ExerciseRecordResponse;
 import com.example.weightloss.dto.FoodRecordResponse;
 import com.example.weightloss.dto.PeriodReportResponse;
 import com.example.weightloss.dto.RecentSummaryResponse;
 import com.example.weightloss.entity.ExerciseRecord;
+import com.example.weightloss.entity.EnergyPlan;
 import com.example.weightloss.entity.FoodRecord;
 import com.example.weightloss.entity.GoalStatus;
 import com.example.weightloss.entity.UserProfile;
@@ -30,17 +32,23 @@ public class SummaryService {
 	private final FoodRecordRepository foodRecordRepository;
 	private final ExerciseRecordRepository exerciseRecordRepository;
 	private final WeightRecordRepository weightRecordRepository;
+	private final EnergyPlanService energyPlanService;
+	private final EnergyBudgetService energyBudgetService;
 
 	public SummaryService(
 		ProfileService profileService,
 		FoodRecordRepository foodRecordRepository,
 		ExerciseRecordRepository exerciseRecordRepository,
-		WeightRecordRepository weightRecordRepository
+		WeightRecordRepository weightRecordRepository,
+		EnergyPlanService energyPlanService,
+		EnergyBudgetService energyBudgetService
 	) {
 		this.profileService = profileService;
 		this.foodRecordRepository = foodRecordRepository;
 		this.exerciseRecordRepository = exerciseRecordRepository;
 		this.weightRecordRepository = weightRecordRepository;
+		this.energyPlanService = energyPlanService;
+		this.energyBudgetService = energyBudgetService;
 	}
 
 	@Transactional(readOnly = true)
@@ -48,8 +56,9 @@ public class SummaryService {
 		UserProfile profile = profileService.getProfileEntity(userId);
 		List<FoodRecord> foodRecords = foodRecordRepository.findByUserIdAndRecordDateOrderByCreatedAtAscIdAsc(userId, date);
 		List<ExerciseRecord> exerciseRecords = exerciseRecordRepository.findByUserIdAndRecordDateOrderByCreatedAtAscIdAsc(userId, date);
+		EnergyPlan activePlan = energyPlanService.findActiveEntity(userId).orElse(null);
 
-		return buildDailySummary(date, profile.getDailyCalorieGoal(), foodRecords, exerciseRecords);
+		return buildDailySummary(date, profile, activePlan, foodRecords, exerciseRecords);
 	}
 
 	@Transactional(readOnly = true)
@@ -61,11 +70,13 @@ public class SummaryService {
 		List<ExerciseRecord> exerciseRecords = exerciseRecordRepository.findByUserIdAndRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(userId, startDate, endDate);
 		Map<LocalDate, List<FoodRecord>> foodRecordsByDate = groupFoodRecordsByDate(foodRecords);
 		Map<LocalDate, List<ExerciseRecord>> exerciseRecordsByDate = groupExerciseRecordsByDate(exerciseRecords);
+		EnergyPlan activePlan = energyPlanService.findActiveEntity(userId).orElse(null);
 
 		return startDate.datesUntil(endDate.plusDays(1))
 			.map(date -> buildDailySummary(
 				date,
-				profile.getDailyCalorieGoal(),
+				profile,
+				activePlan,
 				foodRecordsByDate.getOrDefault(date, List.of()),
 				exerciseRecordsByDate.getOrDefault(date, List.of())
 			))
@@ -83,11 +94,13 @@ public class SummaryService {
 		List<WeightRecord> weightRecords = weightRecordRepository.findByUserIdAndRecordDateBetweenOrderByRecordDateAscCreatedAtAscIdAsc(userId, startDate, endDate);
 		Map<LocalDate, List<FoodRecord>> foodRecordsByDate = groupFoodRecordsByDate(foodRecords);
 		Map<LocalDate, List<ExerciseRecord>> exerciseRecordsByDate = groupExerciseRecordsByDate(exerciseRecords);
+		EnergyPlan activePlan = energyPlanService.findActiveEntity(userId).orElse(null);
 
 		List<DailySummaryResponse> dailySummaries = startDate.datesUntil(endDate.plusDays(1))
 			.map(date -> buildDailySummary(
 				date,
-				profile.getDailyCalorieGoal(),
+				profile,
+				activePlan,
 				foodRecordsByDate.getOrDefault(date, List.of()),
 				exerciseRecordsByDate.getOrDefault(date, List.of())
 			))
@@ -115,7 +128,7 @@ public class SummaryService {
 			average(totalProtein, days),
 			average(totalFat, days),
 			average(totalCarbohydrate, days),
-			profile.getDailyCalorieGoal(),
+			dailySummaries.isEmpty() ? null : dailySummaries.get(dailySummaries.size() - 1).dailyCalorieGoal(),
 			dailySummaries.stream().filter(summary -> summary.goalStatus() == GoalStatus.UNDER).count(),
 			dailySummaries.stream().filter(summary -> summary.goalStatus() == GoalStatus.MEET).count(),
 			dailySummaries.stream().filter(summary -> summary.goalStatus() == GoalStatus.OVER).count(),
@@ -128,14 +141,25 @@ public class SummaryService {
 
 	private DailySummaryResponse buildDailySummary(
 		LocalDate date,
-		Integer dailyCalorieGoal,
+		UserProfile profile,
+		EnergyPlan activePlan,
 		List<FoodRecord> foodRecords,
 		List<ExerciseRecord> exerciseRecords
 	) {
 		int totalCaloriesConsumed = foodRecords.stream().mapToInt(FoodRecord::getCalories).sum();
 		int totalCaloriesBurned = exerciseRecords.stream().mapToInt(ExerciseRecord::getCaloriesBurned).sum();
 		int netCalories = totalCaloriesConsumed - totalCaloriesBurned;
-		Integer calorieDifference = dailyCalorieGoal == null ? null : dailyCalorieGoal - netCalories;
+		EnergyBudgetResponse energyBudget = energyBudgetService.project(
+			profile,
+			activePlan,
+			date,
+			foodRecords,
+			exerciseRecords,
+			0,
+			0
+		).budget();
+		Integer dailyCalorieGoal = energyBudget.baseIntakeTargetCalories();
+		Integer calorieDifference = energyBudget.remainingIntakeCalories();
 
 		return new DailySummaryResponse(
 			date,
@@ -149,7 +173,8 @@ public class SummaryService {
 			sum(foodRecords.stream().map(FoodRecord::getFat).toList()),
 			sum(foodRecords.stream().map(FoodRecord::getCarbohydrate).toList()),
 			foodRecords.stream().map(FoodRecordResponse::from).toList(),
-			exerciseRecords.stream().map(ExerciseRecordResponse::from).toList()
+			exerciseRecords.stream().map(ExerciseRecordResponse::from).toList(),
+			energyBudget
 		);
 	}
 

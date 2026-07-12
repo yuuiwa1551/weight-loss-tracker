@@ -19,7 +19,7 @@ public record CreateExerciseRecordRequest(
 	@NotNull @PositiveOrZero @Max(10000) Integer caloriesBurned,
 	@Size(max = 500) String note,
 	RecordSource source,
-	@Size(max = 160) String clientRequestId,
+	@NotBlank @Size(max = 160) String clientRequestId,
 	@Size(max = 128) String previewFingerprint
 ) {
 }

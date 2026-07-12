@@ -24,7 +24,7 @@ public record CreateFoodRecordRequest(
 	@PositiveOrZero @DecimalMax("1000.0") BigDecimal carbohydrate,
 	@Size(max = 500) String note,
 	RecordSource source,
-	@Size(max = 160) String clientRequestId,
+	@NotBlank @Size(max = 160) String clientRequestId,
 	NutritionSource nutritionSource,
 	@Size(max = 1000) String estimationNote,
 	@Size(max = 128) String previewFingerprint
