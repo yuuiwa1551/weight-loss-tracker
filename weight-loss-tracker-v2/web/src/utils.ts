@@ -14,6 +14,13 @@ export function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
 
+export function createClientRequestId(kind: string) {
+  const randomPart = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Date.now()}-${Math.random().toString(36).slice(2)}`
+  return `web:${kind}:${randomPart}`
+}
+
 export function selectInitialUserId(users: AppUser[], storedValue: string | null) {
   const storedId = storedValue === null ? Number.NaN : Number(storedValue)
   return users.some((user) => user.id === storedId) ? storedId : (users[0]?.id ?? null)

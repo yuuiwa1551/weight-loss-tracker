@@ -323,7 +323,9 @@
 }
 
 .primary-button,
-.icon-button {
+.secondary-button,
+.icon-button,
+.close-button {
   border: 0;
   border-radius: 8px;
   cursor: pointer;
@@ -337,8 +339,18 @@
   font-weight: 800;
 }
 
+.secondary-button {
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text);
+  padding: 10px 14px;
+  font-weight: 700;
+}
+
 .primary-button:disabled,
-.icon-button:disabled {
+.secondary-button:disabled,
+.icon-button:disabled,
+.close-button:disabled {
   cursor: not-allowed;
   opacity: 0.55;
 }
@@ -404,6 +416,150 @@
 .profile-metrics {
   display: grid;
   gap: 12px;
+}
+
+.profile-page {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.profile-side {
+  display: grid;
+  gap: 16px;
+}
+
+.segmented-control {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+  padding: 4px;
+  margin-bottom: 14px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--chip);
+}
+
+.segmented-control button {
+  min-height: 38px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-soft);
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.segmented-control button.active {
+  background: #fff;
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(31, 43, 46, 0.12);
+}
+
+.plan-inputs:empty {
+  display: none;
+}
+
+.active-plan-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 4px 12px;
+  align-items: center;
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.active-plan-strip span,
+.active-plan-strip small {
+  color: var(--text-soft);
+}
+
+.active-plan-strip small {
+  grid-column: 1 / -1;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(20, 29, 31, 0.58);
+}
+
+.confirmation-dialog {
+  width: min(680px, 100%);
+  max-height: calc(100vh - 40px);
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--panel);
+  box-shadow: 0 24px 64px rgba(20, 29, 31, 0.32);
+  padding: 20px;
+}
+
+.dialog-header,
+.dialog-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.dialog-header {
+  margin-bottom: 18px;
+}
+
+.dialog-header h3 {
+  margin: 0;
+}
+
+.close-button {
+  width: 36px;
+  height: 36px;
+  background: transparent;
+  color: var(--text-soft);
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.confirmation-values {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0 18px;
+  border-top: 1px solid var(--border);
+}
+
+.confirmation-values div {
+  min-width: 0;
+  min-height: 58px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.confirmation-values span {
+  color: var(--text-soft);
+}
+
+.confirmation-values strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  text-align: right;
+}
+
+.budget-values {
+  margin-top: 18px;
+}
+
+.dialog-actions {
+  justify-content: flex-end;
+  margin-top: 20px;
 }
 
 .weight-page {
@@ -544,6 +700,7 @@
   .dashboard-grid,
   .report-grid,
   .split-page,
+  .profile-page,
   .metric-row {
     grid-template-columns: 1fr;
   }
@@ -567,7 +724,8 @@
   }
 
   .form-grid,
-  .nav-list {
+  .nav-list,
+  .confirmation-values {
     grid-template-columns: 1fr;
   }
 

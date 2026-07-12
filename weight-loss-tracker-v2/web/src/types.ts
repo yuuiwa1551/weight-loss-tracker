@@ -1,4 +1,15 @@
-import type { MealType } from './api'
+import type {
+  CalorieGoalMode,
+  EnergyPlanPreview,
+  EnergyPlanPreviewRequest,
+  ExerciseRecordPreview,
+  FormulaSex,
+  MealType,
+  NonExerciseActivityLevel,
+  FoodRecordPreview,
+  CreateExerciseRecordRequest,
+  CreateFoodRecordRequest,
+} from './api'
 
 export interface FoodFormState {
   recordDate: string
@@ -26,7 +37,27 @@ export interface ProfileFormState {
   currentWeightKg: string
   targetWeightKg: string
   dailyCalorieGoal: string
+  ageYears: string
+  formulaSex: FormulaSex | ''
+  nonExerciseActivityLevel: NonExerciseActivityLevel | ''
+  calorieGoalMode: CalorieGoalMode
 }
+
+export interface EnergyPlanFormState {
+  mode: 'DEFAULT_RATE' | 'EXPLICIT' | 'TARGET_PERIOD'
+  dailyDeficitCalories: string
+  targetPeriodDays: string
+}
+
+export type PendingConfirmation =
+  | { kind: 'food'; preview: FoodRecordPreview; request: CreateFoodRecordRequest }
+  | { kind: 'exercise'; preview: ExerciseRecordPreview; request: CreateExerciseRecordRequest }
+  | {
+      kind: 'energyPlan'
+      preview: EnergyPlanPreview
+      request: EnergyPlanPreviewRequest
+      clientRequestId: string
+    }
 
 export interface WeightFormState {
   recordDate: string

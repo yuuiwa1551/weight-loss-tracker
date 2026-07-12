@@ -1,8 +1,8 @@
 import type { FormEvent } from 'react'
-import type { DailySummary, PeriodReport, RecentSummary, UserProfile, WeightRecord } from './api'
-import { ExerciseRecordForm, FoodRecordForm, MetricCard, ProfileGoalForm, RecordListPanel, WeightRecordForm } from './components'
-import { goalLabels, mealLabels } from './constants'
-import type { ExerciseFormState, FoodFormState, ProfileFormState, WeightFormState } from './types'
+import type { DailySummary, EnergyPlan, PeriodReport, RecentSummary, UserProfile, WeightRecord } from './api'
+import { EnergyPlanForm, ExerciseRecordForm, FoodRecordForm, MetricCard, ProfileGoalForm, RecordListPanel, WeightRecordForm } from './components'
+import { calorieGoalModeLabels, goalLabels, mealLabels } from './constants'
+import type { EnergyPlanFormState, ExerciseFormState, FoodFormState, ProfileFormState, WeightFormState } from './types'
 import { formatShortDate } from './utils'
 
 const profileFieldLabels: Record<string, string> = {
@@ -10,6 +10,14 @@ const profileFieldLabels: Record<string, string> = {
   currentWeightKg: '当前体重',
   targetWeightKg: '目标体重',
   dailyCalorieGoal: '每日热量目标',
+}
+
+const energyProfileFieldLabels: Record<string, string> = {
+  ageYears: '年龄',
+  formulaSex: '计算用性别',
+  heightCm: '身高',
+  currentWeightKg: '当前体重',
+  nonExerciseActivityLevel: '日常活动',
 }
 
 export function DashboardPage({
@@ -32,28 +40,31 @@ export function DashboardPage({
     ...recentSummaries.flatMap((item) => [item.totalCaloriesConsumed, item.totalCaloriesBurned, item.dailyCalorieGoal ?? 0]),
   )
   const rawGoalPercent = dailySummary?.dailyCalorieGoal
-    ? Math.round((dailySummary.netCalories / dailySummary.dailyCalorieGoal) * 100)
+    ? Math.round((dailySummary.totalCaloriesConsumed / (dailySummary.energyBudget.todayIntakeBudgetCalories || dailySummary.dailyCalorieGoal)) * 100)
     : 0
   const goalPercent = Math.min(100, Math.max(0, rawGoalPercent))
 
   return (
     <section className="page-grid dashboard-grid">
       <div className="metric-row">
-        <MetricCard label="摄入" value={dailySummary?.totalCaloriesConsumed} suffix="kcal" tone="ink" />
-        <MetricCard label="消耗" value={dailySummary?.totalCaloriesBurned} suffix="kcal" tone="teal" />
-        <MetricCard label="净热量" value={dailySummary?.netCalories} suffix="kcal" tone="amber" />
-        <MetricCard label="目标差" value={dailySummary?.calorieDifference} suffix="kcal" tone="berry" />
+        <MetricCard label="静息消耗" value={dailySummary?.energyBudget.restingEnergyCalories} suffix="kcal" tone="ink" />
+        <MetricCard label="预计总消耗" value={dailySummary?.energyBudget.estimatedTotalExpenditureCalories} suffix="kcal" tone="teal" />
+        <MetricCard label="今日摄入预算" value={dailySummary?.energyBudget.todayIntakeBudgetCalories} suffix="kcal" tone="amber" />
+        <MetricCard label="剩余可摄入" value={dailySummary?.energyBudget.remainingIntakeCalories} suffix="kcal" tone="berry" />
       </div>
 
       <section className="panel goal-panel">
         <div>
-          <p className="eyebrow">目标状态</p>
+          <p className="eyebrow">{dailySummary ? calorieGoalModeLabels[dailySummary.energyBudget.goalMode] : '目标状态'}</p>
           <h3>{dailySummary ? goalLabels[dailySummary.goalStatus] : '等待数据'}</h3>
         </div>
         <div className={`goal-ring ${dailySummary?.goalStatus.toLowerCase() || 'unset'}`}>
           {dailySummary?.dailyCalorieGoal == null ? '—' : `${goalPercent}%`}
         </div>
         <div className="macro-row">
+          <span>摄入 {dailySummary?.totalCaloriesConsumed ?? 0} kcal</span>
+          <span>运动 {dailySummary?.totalCaloriesBurned ?? 0} kcal</span>
+          <span>预计缺口 {dailySummary?.energyBudget.projectedDeficitCalories ?? '—'} kcal</span>
           <span>蛋白质 {dailySummary?.totalProtein ?? 0}g</span>
           <span>脂肪 {dailySummary?.totalFat ?? 0}g</span>
           <span>碳水 {dailySummary?.totalCarbohydrate ?? 0}g</span>
@@ -347,18 +358,26 @@ export function ProfilePage({
   profileForm,
   loadingProfile,
   saving,
+  activePlan,
+  planForm,
   onProfileFormChange,
   onProfileSubmit,
+  onPlanFormChange,
+  onPlanSubmit,
 }: {
   profile: UserProfile | null
   profileForm: ProfileFormState | null
   loadingProfile: boolean
   saving: boolean
+  activePlan: EnergyPlan | null
+  planForm: EnergyPlanFormState
   onProfileFormChange: (nextForm: ProfileFormState) => void
   onProfileSubmit: (event: FormEvent<HTMLFormElement>) => void
+  onPlanFormChange: (nextForm: EnergyPlanFormState) => void
+  onPlanSubmit: (event: FormEvent<HTMLFormElement>) => void
 }) {
   return (
-    <section className="split-page profile-page">
+    <section className="profile-page">
       <ProfileGoalForm
         profileForm={profileForm}
         saving={saving}
@@ -366,20 +385,35 @@ export function ProfilePage({
         onSubmit={onProfileSubmit}
         onChange={onProfileFormChange}
       />
-      <section className="panel profile-summary">
-        <p className="eyebrow">Health</p>
-        <h3>{profile?.nickname || '未加载'}</h3>
-        {profile && !profile.profileComplete && (
-          <div className="profile-warning">
-            还需补充：{profile.missingFields.map((field) => profileFieldLabels[field] || field).join('、')}
+      <div className="profile-side">
+        <section className="panel profile-summary">
+          <p className="eyebrow">Health</p>
+          <h3>{profile?.nickname || '未加载'}</h3>
+          {profile && !profile.profileComplete && (
+            <div className="profile-warning">
+              还需补充：{profile.missingFields.map((field) => profileFieldLabels[field] || field).join('、')}
+            </div>
+          )}
+          {profile && !profile.energyProfileComplete && (
+            <div className="profile-warning">
+              能量资料：{profile.energyMissingFields.map((field) => energyProfileFieldLabels[field] || field).join('、')}
+            </div>
+          )}
+          <div className="profile-metrics">
+            <MetricCard label="BMI" value={profile?.bmi} suffix="" tone="ink" />
+            <MetricCard label="待减重" value={profile?.weightToLoseKg} suffix="kg" tone="teal" />
+            <MetricCard label="当前体重" value={profile?.currentWeightKg} suffix="kg" tone="amber" />
           </div>
-        )}
-        <div className="profile-metrics">
-          <MetricCard label="BMI" value={profile?.bmi} suffix="" tone="ink" />
-          <MetricCard label="待减重" value={profile?.weightToLoseKg} suffix="kg" tone="teal" />
-          <MetricCard label="当前体重" value={profile?.currentWeightKg} suffix="kg" tone="amber" />
-        </div>
-      </section>
+        </section>
+        <EnergyPlanForm
+          planForm={planForm}
+          activePlan={activePlan}
+          energyProfileComplete={profile?.energyProfileComplete ?? false}
+          saving={saving}
+          onSubmit={onPlanSubmit}
+          onChange={onPlanFormChange}
+        />
+      </div>
     </section>
   )
 }
