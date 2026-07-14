@@ -137,67 +137,69 @@ class ServiceTests(IsolatedAsyncioTestCase):
         self.assertEqual("MODERATE", self.api.profile["nonExerciseActivityLevel"])
         self.assertEqual("AUTO", self.api.profile["calorieGoalMode"])
 
-    async def test_estimated_food_requires_backend_preview_and_confirmation(self):
+    async def test_estimated_food_previews_and_writes_in_one_call(self):
         context = make_context(raw_message="午饭吃了一份鸡肉沙拉")
         result = await self.service.record_food(
             context, "2026-07-12", "LUNCH", "鸡肉沙拉", 460, 38, 18, 28
         )
-        self.assertIn("待确认", result)
+        self.assertIn("饮食已记录", result)
         self.assertIn("剩余 1600 kcal", result)
-        self.assertEqual([], self.api.created)
-
-        confirmed = await self.service.confirm(context)
-        self.assertIn("已确认并写入", confirmed)
+        self.assertIsNone(self.service.pending.get(context.identity.key))
         self.assertEqual("food", self.api.created[0][0])
         self.assertEqual("food-fingerprint", self.api.created[0][2]["previewFingerprint"])
         self.assertEqual("LLM_ESTIMATE", self.api.created[0][2]["nutritionSource"])
+        self.assertIn("没有等待确认", await self.service.confirm(context))
 
-    async def test_user_provided_food_value_still_requires_confirmation(self):
+    async def test_user_provided_food_writes_immediately_and_is_idempotent(self):
         context = make_context(raw_message="午饭鸡肉沙拉 500 千卡")
-        preview = await self.service.record_food(
+        first = await self.service.record_food(
             context, "2026-07-12", "LUNCH", "鸡肉沙拉", 500, is_estimate=False
         )
-        self.assertIn("用户提供值", preview)
-        self.assertEqual([], self.api.created)
-
-        await self.service.confirm(context)
+        second = await self.service.record_food(
+            context, "2026-07-12", "LUNCH", "鸡肉沙拉", 500, is_estimate=False
+        )
+        self.assertIn("饮食已记录", first)
+        self.assertIn("饮食已记录", second)
         self.assertEqual(1, len(self.api.created))
         self.assertEqual("USER_PROVIDED", self.api.created[0][2]["nutritionSource"])
+        self.assertIsNone(self.service.pending.get(context.identity.key))
 
-    async def test_backend_failure_keeps_pending_action(self):
+    async def test_backend_failure_leaves_no_pending_and_can_be_retried(self):
         context = make_context(raw_message="吃了一份估算 400 卡的饭")
-        await self.service.record_food(
-            context, "2026-07-12", "DINNER", "盖饭", 400, is_estimate=True
-        )
         self.api.fail_food_once = True
         with self.assertRaises(ApiError):
-            await self.service.confirm(context)
-        self.assertIsNotNone(self.service.pending.get(context.identity.key))
-
-        result = await self.service.confirm(context)
-        self.assertIn("已确认并写入", result)
-
-    async def test_pending_confirmation_is_per_qq(self):
-        first = make_context(user="10001", raw_message="估算的饭")
-        second = make_context(user="10002", raw_message="估算的饭")
-        await self.service.record_food(first, "2026-07-12", "DINNER", "A", 300)
-        await self.service.record_food(second, "2026-07-12", "DINNER", "B", 400)
-
-        await self.service.confirm(first)
-        self.assertEqual("A", self.api.created[0][2]["foodName"])
-        self.assertIsNotNone(self.service.pending.get(second.identity.key))
-
-    async def test_user_provided_exercise_value_requires_confirmation(self):
-        context = make_context(raw_message="跑步 30 分钟消耗 260 千卡")
-        preview = await self.service.record_exercise(
-            context, "2026-07-12", "CARDIO", "跑步", 30, 260, is_estimate=False
-        )
-        self.assertIn("待确认运动", preview)
+            await self.service.record_food(
+                context, "2026-07-12", "DINNER", "盖饭", 400, is_estimate=True
+            )
+        self.assertIsNone(self.service.pending.get(context.identity.key))
         self.assertEqual([], self.api.created)
 
-        await self.service.confirm(context)
+        result = await self.service.record_food(
+            context, "2026-07-12", "DINNER", "盖饭", 400, is_estimate=True
+        )
+        self.assertIn("饮食已记录", result)
+        self.assertEqual(1, len(self.api.created))
+
+    async def test_energy_plan_confirmation_remains_per_qq(self):
+        first = make_context(user="10001", raw_message="估算的饭")
+        second = make_context(user="10002", raw_message="估算的饭")
+        await self.service.preview_energy_plan(first, daily_deficit_calories=300)
+        await self.service.preview_energy_plan(second, daily_deficit_calories=400)
+
+        await self.service.confirm(first)
+        self.assertEqual(1, len(self.api.confirmed_plans))
+        self.assertIsNotNone(self.service.pending.get(second.identity.key))
+
+    async def test_user_provided_exercise_previews_and_writes_in_one_call(self):
+        context = make_context(raw_message="跑步 30 分钟消耗 260 千卡")
+        result = await self.service.record_exercise(
+            context, "2026-07-12", "CARDIO", "跑步", 30, 260, is_estimate=False
+        )
+        self.assertIn("运动已记录", result)
+        self.assertIn("剩余 1600 kcal", result)
         self.assertEqual("exercise", self.api.created[0][0])
         self.assertEqual("exercise-fingerprint", self.api.created[0][2]["previewFingerprint"])
+        self.assertIsNone(self.service.pending.get(context.identity.key))
 
     async def test_energy_plan_requires_confirmation(self):
         context = make_context(raw_message="每天留 400 千卡缺口")
@@ -209,6 +211,19 @@ class ServiceTests(IsolatedAsyncioTestCase):
         confirmed = await self.service.confirm(context)
         self.assertIn("热量计划已确认", confirmed)
         self.assertEqual("plan-fingerprint", self.api.confirmed_plans[0][1]["previewFingerprint"])
+
+    async def test_automatic_food_can_be_undone_with_confirmation(self):
+        context = make_context(raw_message="午饭鸡肉沙拉 500 千卡")
+        await self.service.record_food(
+            context, "2026-07-12", "LUNCH", "鸡肉沙拉", 500, is_estimate=False
+        )
+        preview = self.service.undo_last(context)
+        self.assertIn("待撤销", preview)
+        self.assertEqual([], self.api.deleted)
+
+        result = await self.service.confirm(context)
+        self.assertIn("已撤销", result)
+        self.assertEqual([(108, "food", 1)], self.api.deleted)
 
     async def test_daily_budget_is_read_only(self):
         result = await self.service.daily_energy_budget(make_context(), "2026-07-12")

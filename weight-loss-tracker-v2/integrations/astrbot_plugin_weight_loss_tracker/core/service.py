@@ -154,21 +154,13 @@ class WeightLossService:
         }
         result = await self.api.preview_food(user_id, payload)
         payload["previewFingerprint"] = result["previewFingerprint"]
-        preview = (
-            f"待确认饮食：{result['recordDate']} {result['mealType']}，{result['foodName']}，"
-            f"{result['calories']} kcal，蛋白质 {result.get('protein') or 0}g / "
-            f"脂肪 {result.get('fat') or 0}g / 碳水 {result.get('carbohydrate') or 0}g。"
-            f"{self._budget_text(result.get('projectedEnergyBudget'))}"
-        )
-        self.pending.put(
-            context.identity.key,
-            PendingAction("food", user_id, payload, preview, time.monotonic()),
-        )
-        source_text = "估算值" if estimated else "用户提供值"
+        record = await self.api.create_food(user_id, payload)
+        self._remember(context, "food", user_id, record, str(record["foodName"]))
         return (
-            preview
-            + f"以上为{source_text}，尚未写入。请回复确认或调用 weight_confirm；"
-            "取消请调用 weight_cancel。"
+            f"饮食已记录：{record['recordDate']} {record['mealType']}，{record['foodName']}，"
+            f"{record['calories']} kcal，蛋白质 {record.get('protein') or 0}g / "
+            f"脂肪 {record.get('fat') or 0}g / 碳水 {record.get('carbohydrate') or 0}g。"
+            f"{self._budget_text(record.get('energyBudget'))}"
         )
 
     async def record_exercise(
@@ -183,7 +175,6 @@ class WeightLossService:
         is_estimate: bool = True,
     ) -> str:
         user_id = await self._user_id(context)
-        estimated = is_estimate or not CALORIE_PATTERN.search(context.raw_message)
         payload = {
             "recordDate": record_date,
             "exerciseType": exercise_type,
@@ -196,20 +187,12 @@ class WeightLossService:
         }
         result = await self.api.preview_exercise(user_id, payload)
         payload["previewFingerprint"] = result["previewFingerprint"]
-        preview = (
-            f"待确认运动：{result['recordDate']} {result['exerciseName']}，"
-            f"{result['durationMinutes']} 分钟，消耗 {result['caloriesBurned']} kcal。"
-            f"{self._budget_text(result.get('projectedEnergyBudget'))}"
-        )
-        self.pending.put(
-            context.identity.key,
-            PendingAction("exercise", user_id, payload, preview, time.monotonic()),
-        )
-        source_text = "估算值" if estimated else "用户提供值"
+        record = await self.api.create_exercise(user_id, payload)
+        self._remember(context, "exercise", user_id, record, str(record["exerciseName"]))
         return (
-            preview
-            + f"以上为{source_text}，尚未写入。请回复确认或调用 weight_confirm；"
-            "取消请调用 weight_cancel。"
+            f"运动已记录：{record['recordDate']} {record['exerciseName']}，"
+            f"{record['durationMinutes']} 分钟，消耗 {record['caloriesBurned']} kcal。"
+            f"{self._budget_text(record.get('energyBudget'))}"
         )
 
     async def preview_energy_plan(

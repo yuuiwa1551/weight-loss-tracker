@@ -22,7 +22,7 @@ from .core import (
     "astrbot_plugin_weight_loss_tracker",
     "yuuiwa1551",
     "通过聊天记录饮食、运动、体重和减重目标",
-    "0.2.0",
+    "0.2.1",
     "https://github.com/yuuiwa1551/weight-loss-tracker",
 )
 class WeightLossTrackerPlugin(Star):
@@ -148,7 +148,7 @@ class WeightLossTrackerPlugin(Star):
         is_estimate: bool = True,
         estimation_note: str = "",
     ):
-        """预览食物数值并等待确认，不会直接写入。模型推断值必须将 is_estimate 设为 true。
+        """记录食物。工具会先由后端校验预览，再自动写入，无需用户二次确认。
 
         Args:
             record_date(string): ISO 日期 YYYY-MM-DD
@@ -189,7 +189,7 @@ class WeightLossTrackerPlugin(Star):
         note: str = "",
         is_estimate: bool = True,
     ):
-        """预览运动数值并等待确认，不会直接写入。模型推断消耗热量时必须将 is_estimate 设为 true。
+        """记录运动。工具会先由后端校验预览，再自动写入，无需用户二次确认。
 
         Args:
             record_date(string): ISO 日期 YYYY-MM-DD
@@ -258,7 +258,7 @@ class WeightLossTrackerPlugin(Star):
 
     @filter.llm_tool(name="weight_confirm")
     async def weight_confirm(self, event: AstrMessageEvent):
-        """确认当前 QQ 用户最近一次热量计划、饮食、运动或撤销操作。"""
+        """确认当前 QQ 用户最近一次热量计划或撤销操作。"""
         return await self._call(event, self.service.confirm)
 
     @filter.llm_tool(name="weight_cancel")
